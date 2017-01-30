@@ -201,8 +201,8 @@ uint8_t __attribute__ ((noinline)) i2c_read(bool last);
 
  
 // Internal delay functions.
-void __attribute__ ((noinline)) i2c_delay_half(void) asm("ass_i2c_delay_half");
-void __attribute__ ((noinline)) i2c_wait_scl_high(void) asm("ass_i2c_wait_scl_high");
+void __attribute__ ((noinline)) __attribute__ ((used)) i2c_delay_half(void) asm("ass_i2c_delay_half");
+void __attribute__ ((noinline)) __attribute__ ((used)) i2c_wait_scl_high(void) asm("ass_i2c_wait_scl_high");
 
 void  i2c_delay_half(void)
 { // function call 3 cycles => 3C
