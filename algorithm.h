@@ -60,7 +60,6 @@
 *******************************************************************************
 */
 
-// COMMIT TEST CHRISTIAN
 
 #ifndef ALGORITHM_H_
 #define ALGORITHM_H_
