@@ -78,24 +78,9 @@
 #include "algorithm.h"
 #include "max30102.h"
 
-//if Adafruit Flora development board is chosen, include NeoPixel library and define an NeoPixel object
-#if defined(ARDUINO_AVR_FLORA8)
-#include "adafruit_neopixel.h"
-#define BRIGHTNESS_DIVISOR 8  //to lower the max brightness of the neopixel LED
-Adafruit_NeoPixel LED = Adafruit_NeoPixel(1, 8, NEO_GRB + NEO_KHZ800);
-#endif
 
-#define MAX_BRIGHTNESS 255
-
-#if defined(ARDUINO_AVR_UNO)
-//Arduino Uno doesn't have enough SRAM to store 100 samples of IR led data and red led data in 32-bit format
-//To solve this problem, 16-bit MSB of the sampled data will be truncated.  Samples become 16-bit data.
-uint16_t aun_ir_buffer[100]; //infrared LED sensor data
-uint16_t aun_red_buffer[100];  //red LED sensor data
-#else
 uint32_t aun_ir_buffer[100]; //infrared LED sensor data
 uint32_t aun_red_buffer[100];  //red LED sensor data
-#endif
 int32_t n_ir_buffer_length; //data length
 int32_t n_spo2;  //SPO2 value
 int8_t ch_spo2_valid;  //indicator to show if the SPO2 calculation is valid
@@ -107,16 +92,6 @@ uint8_t uch_dummy;
 // the setup routine runs once when you press reset:
 void setup() {
 
-#if defined(ARDUINO_AVR_LILYPAD_USB)    
-  pinMode(13, OUTPUT);  //LED output pin on Lilypad
-#endif
-
-#if defined(ARDUINO_AVR_FLORA8)
-  //Initialize the LED
-  LED.begin();
-  LED.show();
-#endif
-
   maxim_max30102_reset(); //resets the MAX30102
   // initialize serial communication at 115200 bits per second:
   Serial.begin(115200);
@@ -127,9 +102,7 @@ void setup() {
   {
     Serial.write(27);       // ESC command
     Serial.print(F("[2J"));    // clear screen command
-#if defined(ARDUINO_AVR_LILYPAD_USB)    
-    Serial.println(F("Lilypad"));
-#endif
+
 #if defined(ARDUINO_AVR_FLORA8)
     Serial.println(F("Adafruit Flora"));
 #endif
@@ -199,35 +172,6 @@ void loop() {
       digitalWrite(9, !digitalRead(9));
       maxim_max30102_read_fifo((aun_red_buffer+i), (aun_ir_buffer+i));
 
-      //calculate the brightness of the LED
-      if(aun_red_buffer[i]>un_prev_data)
-      {
-        f_temp=aun_red_buffer[i]-un_prev_data;
-        f_temp/=(un_max-un_min);
-        f_temp*=MAX_BRIGHTNESS;
-        f_temp=un_brightness-f_temp;
-        if(f_temp<0)
-          un_brightness=0;
-        else
-          un_brightness=(int)f_temp;
-      }
-      else
-      {
-        f_temp=un_prev_data-aun_red_buffer[i];
-        f_temp/=(un_max-un_min);
-        f_temp*=MAX_BRIGHTNESS;
-        un_brightness+=(int)f_temp;
-        if(un_brightness>MAX_BRIGHTNESS)
-          un_brightness=MAX_BRIGHTNESS;
-      }
-#if defined(ARDUINO_AVR_LILYPAD_USB)  
-      analogWrite(13, un_brightness);
-#endif
-
-#if defined(ARDUINO_AVR_FLORA8)
-      LED.setPixelColor(0, un_brightness/BRIGHTNESS_DIVISOR, 0, 0);
-      LED.show();
-#endif
 
       //send samples and calculation result to terminal program through UART
       Serial.print(F("red="));
