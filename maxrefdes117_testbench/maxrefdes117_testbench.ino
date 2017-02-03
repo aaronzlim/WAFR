@@ -31,8 +31,8 @@ void setup() {
 }
 
 void loop() {
-  Wire.beginTransmission(0001001);
-  Wire.write(0000100);
+  Wire.beginTransmission(8);
+  Wire.write(4);
   Wire.endTransmission();
   delay(500);
 }

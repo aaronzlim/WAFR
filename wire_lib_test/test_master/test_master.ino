@@ -10,6 +10,12 @@
 #include <USI_TWI_Master.h>
 #include <Wire.h>
 
+// The I2C write address of the Maxrefdes117 is given as 0xAE = 74 in decimal
+// however the last bit is the read/write bit, so the 7-bit address is 87
+// in decimal.
+
+#define MAXREFDES_WRT_ADDR 87
+
 void setup() {
 	Wire.begin(); // Assigning address 0x02 to the slave Flora
 	delay(3000);
@@ -18,8 +24,8 @@ void setup() {
 void loop() {
 	
 	// Send the number 4 to the slave device every 0.5s
-	Wire.beginTransmission(8); // Slave device should have address 0x08 (first available)
-	Wire.write(174); // Send the number 174
+	Wire.beginTransmission(MAXREFDES_WRT_ADDR);
+	Wire.write(4); // Send the number 4 
 	Wire.endTransmission();
 
 	delay(500);
