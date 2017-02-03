@@ -59,8 +59,7 @@
 * ownership rights.
 *******************************************************************************
 */
-
-// COMMIT TEST CHRISTIAN
+//  this is a 3rd test
 
 #ifndef ALGORITHM_H_
 #define ALGORITHM_H_
