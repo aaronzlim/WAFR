@@ -11,7 +11,7 @@
 #include <Wire.h>
 
 void setup() {
-	Wire.begin(2); // Assigning address 0x02 to the slave Flora
+	Wire.begin(8); // Assigning address 0x08 to the slave Flora
 	Wire.onReceive(displayData); // Register a function to execute when the master sends data
 	Serial.begin(115200); // Begin serial communication
 	While(!Serial); // Wait for serial to start

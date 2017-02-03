@@ -1,8 +1,8 @@
 /*
 * Aaron Lim
-* test_master
+* test_slave
 * 2 February 2017
-* Testing data transfer between two Arduino Flora over an I2C bus
+* Testing data transfer between two Arduino Flora over an I2C bus.
 */
 
 #include <Arduino.h>
@@ -11,17 +11,17 @@
 #include <Wire.h>
 
 void setup() {
-
-	Wire.begin();
-	delay(3000); // Wait for slave device to get set up
-
+	Wire.begin(); // Assigning address 0x02 to the slave Flora
+	delay(3000);
 }
 
 void loop() {
-	// Every 0.5s send the number 4 to the slave device
-	Wire.beginTransmission(2); // Slave device should have address 0x02
-	Wire.write(4); // 0b0000100
+	
+	// Send the number 4 to the slave device every 0.5s
+	Wire.beginTransmission(8); // Slave device should have address 0x08 (first available)
+	Wire.write(174); // Send the number 174
 	Wire.endTransmission();
+
 	delay(500);
 
 }
