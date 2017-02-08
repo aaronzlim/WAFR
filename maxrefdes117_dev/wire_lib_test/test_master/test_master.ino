@@ -28,8 +28,12 @@ void setup() {
 void loop() {
 
 	// Send the number 4 to the slave device every 0.5s
-	Wire.beginTransmission(MAXREFDES_WRT_ADDR);
-	Wire.write(4); // Send the number 4
+	Wire.beginTransmission(9);
+	Wire.write(0x01); // Send the number 4
+  Wire.write(0x02);
+  Wire.write(0x04);
+  Wire.write(0x08);
+  Wire.write(0x0C);
 	Wire.endTransmission();
   
 	delay(500);
