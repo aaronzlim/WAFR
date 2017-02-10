@@ -10,6 +10,7 @@
 
 #include <Arduino.h>
 #include "my_max30102.h"
+#include "algorithm.cpp"
 #include <TinyWireM.h>
 #include <USI_TWI_Master.h>
 #include <Wire.h>
@@ -48,7 +49,7 @@ void setup() {
 
   // Initialize the max30102
   while(max30102_init()) {
-    Serial.print("MAX30102 INIT ERROR: ");
+    Serial.print("MAX30102 INIT ERROR: "); // Debugging
     Serial.print(tx_status);
     Serial.print("\n");
   }
@@ -58,11 +59,7 @@ void setup() {
   delay(500);
 
   // Read/Clear REG_INTR_STATUS_1 (0x00)
-  while(max30102_read_interrupt_status_1()) {
-    Serial.print("MAX30102 ERROR CLEARING INTERRUPT STATUS 1: ");
-    Serial.print(tx_status);
-    Serial.print("\n");
-  }
+  max30102_read_interrupt_status_1();
   
 }
 
@@ -75,7 +72,7 @@ void loop() {
     while(digitalRead(10)==1); // Wait until the interrupt pin asserts
 
     // Read from max30102 FIFO
-    // ^^ STILL NEED TO IMPLEMENT THIS ^^
+    max30102_read_fifo(red_buffer, ir_buffer);
     
     Serial.print("red=");
     Serial.print(red_buffer[i], DEC);
@@ -84,8 +81,56 @@ void loop() {
   }
   
   // CALCULATE HR AND SPO2
+  maxim_heart_rate_and_oxygen_saturation(ir_buffer, data_buffer_length, red_buffer, &spo2, &spo2_valid, &heart_rate, &hr_valid);
 
-  // START COLLECTING DATA CONTINUOUSLY AND CALCULATE HR and SPO2 EVERY 1 SECOND
+  // DISPLAY DATA
+}
+
+void max30102_read_fifo(uint32_t *red_led, uint32_t *ir_led) {
+
+  uint32_t temp32;
+  *ir_led = 0;
+  *red_led = 0;
+  
+  // Clear the interrupt status registers
+  Wire.beginTransmission(I2C_MAX30102_ADDR); // Talk to max30102
+  Wire.write(REG_INTR_STATUS_1); // set register pointer to 0x00
+  Wire.endTransmission(true); // Full Stop
+  Wire.requestFrom(I2C_MAX30102_ADDR, 1, true); // read REG_INTR_STATUS_1, full stop
+  Wire.requestFrom(I2C_MAX30102_ADDR, 1, true); // read REG_INTR_STATUS_2, full stop
+
+  // Read RED LED data from FIFO registers
+  Wire.beginTransmission(I2C_MAX30102_ADDR); // Talk to max30102
+  Wire.write(REG_FIFO_DATA); // Set register pointer to 0x07
+  Wire.endTransmission(true); // Full Stop
+  
+  Wire.requestFrom(I2C_MAX30102_ADDR, 1, true); // Request first byte of three
+  temp32 = Wire.read(); // Store byte
+  temp32<<=16; // Shift by 2 bytes
+  *red_led += temp32; // Put byte in buffer
+  Wire.requestFrom(I2C_MAX30102_ADDR, 1, true); // Request second byte of three
+  temp32 = Wire.read(); // Store byte
+  temp32<<=8; // Shift by 1 byte
+  *red_led += temp32; // Put byte in buffer
+  Wire.requestFrom(I2C_MAX30102_ADDR, 1, true); // Request third byte of three
+  temp32 = Wire.read(); // Store byte
+  *red_led += temp32; // Put byte in buffer
+
+  // Read IR LED data from FIFO registers
+  Wire.requestFrom(I2C_MAX30102_ADDR, 1, true);
+  temp32 = Wire.read();
+  temp32<<=16;
+  *ir_led += temp32;
+  Wire.requestFrom(I2C_MAX30102_ADDR, 1, true);
+  temp32 = Wire.read();
+  temp32<<=8;
+  *ir_led += temp32;
+  Wire.requestFrom(I2C_MAX30102_ADDR, 1, true);
+  temp32 = Wire.read();
+  *ir_led += temp32;
+
+  *red_led &= 0x03FFFF; // Mask MSB [23:18]
+  *ir_led &= 0x03FFFF; // Mask MSB [23:18]
 }
 
 byte max30102_init(void) {
@@ -100,22 +145,26 @@ byte max30102_init(void) {
   Wire.beginTransmission(I2C_MAX30102_ADDR);
   Wire.write(REG_MODE_CONFIG); // Set register pointer to 0x09
   Wire.write(0x40); // Reset the max30102
-  tx_status = Wire.endTransmission(false); // Repeat a start condition
+  tx_status = Wire.endTransmission(true); // Full Stop
   if(tx_status) {
-    Wire.endTransmission(true); // If it fails return and try again
-    return tx_status;
+    return tx_status; // If it fails return and try again
   }
+
+  delay(1000);
+
+  Wire.beginTransmission(I2C_MAX30102_ADDR);
   Wire.write(REG_INTR_ENABLE_1); // Set register pointer to 0x02
   Wire.write(0xc0); // Write to REG_INTR_ENABLE_1 (0x02)
   Wire.write(0x00); // Write to REG_INTR_ENABLE_2 (0x03)
   Wire.write(0x00); // Write to REG_FIFO_WR_PTR (0x04)
   Wire.write(0x00); // Write to REG_OVF_COUNTER (0x05)
   Wire.write(0x00); // Write to REG_FIFO_RD_PTR (0x06)
-  tx_status = Wire.endTransmission(false); // Repeat a start condition
+  tx_status = Wire.endTransmission(true); // Full Stop
   if(tx_status) {
-    Wire.endTransmission(true); // If it fails return and try again
-    return tx_status;
+    return tx_status; // If it fails return and try again
   }
+
+  Wire.beginTransmission(I2C_MAX30102_ADDR);
   Wire.write(REG_FIFO_CONFIG); // Set register pointer to 0x08
   Wire.write(0x4f); // Write to REG_FIFO_CONFIG (0x08)
                     // sample avg = 4, fifo rollover=false, fifo almost full = 17
@@ -123,19 +172,26 @@ byte max30102_init(void) {
                     // 0x02 for Red only, 0x03 for SpO2 mode, 0x07 multimode LED
   Wire.write(0x27); // Write to REG_SPO2_CONFIG (0x0A)
                     // SPO2_ADC range = 4096nA, SPO2 sample rate (100 Hz), LED pulseWidth (411uS)
-  tx_status = Wire.endTransmission(false); // Repeat a start condition
+  tx_status = Wire.endTransmission(true); // Full Stop
   if(tx_status) {
-    Wire.endTransmission(true); // If it fails return and try again
-    return tx_status;
+    return tx_status; // If it fails return and try again
   }
+
+  Wire.beginTransmission(I2C_MAX30102_ADDR);
   Wire.write(REG_LED1_PA); // Set register pointer to 0x0C
   Wire.write(0x24); // Write to REG_LED1_PA
                     //Choose value for ~ 7mA for LED1
   Wire.write(0x24); // Write to REG_LED2_PA
                     //Choose value for ~ 7mA for LED2
+  tx_status = Wire.endTransmission(true); // Full Stop
+  if(tx_status) {
+    return tx_status; // If it fails return and try again
+  }
+  Wire.beginTransmission(I2C_MAX30102_ADDR);
+  Wire.write(REG_PILOT_PA); // Set register pointer to 0x10
   Wire.write(0x7f); // Write to REG_PILOT_PA
                     // Choose value for ~ 25mA for Pilot LED
-  tx_status = Wire.endTransmission();
+  tx_status = Wire.endTransmission(true);
   return tx_status;
 }
 
@@ -145,12 +201,12 @@ byte max30102_read_interrupt_status_1(void) {
   * Function: Reads/Clears interrupt status 1 register
   * 
   */
-  Wire.beginTransmission(I2C_MAX30102_ADDR);
-  Wire.write(REG_INTR_STATUS_1);
-  Wire.requestFrom(I2C_MAX30102_ADDR, 1);
-  btemp = Wire.read();
-  tx_status = Wire.endTransmission();
-  return btemp;
+  Wire.beginTransmission(I2C_MAX30102_ADDR); // Get attention of max30102
+  Wire.write(REG_INTR_STATUS_1); // Set register pointer to 0x00
+  Wire.endTransmission(true); // Full Stop
+  
+  Wire.requestFrom(I2C_MAX30102_ADDR, 1, true); // Request 1 byte of data
+  return Wire.read();
 }
 
 
