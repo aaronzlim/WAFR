@@ -1,7 +1,7 @@
 /*
  * Author: Aaron Lim
  * Project: WAFR
- * Filename: my_max30102.h
+ * Filename: max30102_wire_driver.h
  * Description: Adapting the original max30102 driver for the Wire library
  * 
  * Revision History:
@@ -40,9 +40,13 @@
 #define REG_REV_ID 0xFE
 #define REG_PART_ID 0xFF
 
-byte read_reg(byte reg);
-void write_reg(uint8_t addr, uint8_t data);
-void set_reg_ptr(uint8_t addr);
+byte max30102_read_reg(byte reg);
+void max30102_write_reg(uint8_t addr, uint8_t data);
+void max30102_set_reg_ptr(uint8_t addr);
+bool max30102_read_fifo(uint32_t *red_buffer, uint32_t *ir_buffer, uint8_t idx);
+void max30102_init(void);
+void max30102_clear_interrupt_status_regs(void);
+void max30102_reset(void);
+
 
 #endif // max30102_wire_driver_H
-
