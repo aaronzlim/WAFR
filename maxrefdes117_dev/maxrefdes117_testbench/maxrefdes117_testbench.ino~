@@ -9,8 +9,8 @@
 */
 
 #include <Arduino.h>
-#include "max30102_wire_driver.h"
-#include "max30102_smoothing.h"
+#include "my_max30102.h"
+//#include "algorithm.cpp"
 #include <TinyWireM.h>
 #include <USI_TWI_Master.h>
 #include <Wire.h>
@@ -116,7 +116,7 @@ bool max30102_read_fifo(uint8_t idx) {
     return false; // No data to read
   }
   
-  // Read LED data from FIFO registers
+  // Read RED LED data from FIFO registers
   set_reg_ptr(REG_FIFO_DATA); // Point to fifo data register
 
   for(j=0; j<num_samples; j++) {
@@ -132,8 +132,77 @@ bool max30102_read_fifo(uint8_t idx) {
     ir_sample &= 0x03FFFF;
   }
 
+  //Serial.print("\nRED SAMPLE: ");
   red_buffer[idx] = red_sample;
   ir_buffer[idx] = ir_sample;
+
+  //Serial.print("\nIR_SAMPLE: ");
+  //Serial.print(ir_sample, DEC);
+/*  
+  Wire.requestFrom(I2C_MAX30102_ADDR, 1, true); // Request first byte of three
+  temp = Wire.read();
+  temp<<=16; // Shift by 2 bytes
+  sample |= temp; // Store first byte
+
+  fifo_read_ptr++;
+  write_reg(REG_FIFO_RD_PTR, fifo_read_ptr); // Update read ptr
+
+  set_reg_ptr(REG_FIFO_DATA); // point to fifo data
+  
+  Wire.requestFrom(I2C_MAX30102_ADDR, 1, true); // Request second byte of three
+  temp = Wire.read(); // Store byte
+  temp<<=8; // Shift by 1 byte
+  sample |= temp; // Store second byte
+
+  fifo_read_ptr++;
+  write_reg(REG_FIFO_RD_PTR, fifo_read_ptr); // update read ptr
+
+  set_reg_ptr(REG_FIFO_DATA); // point to fifo data
+  
+  Wire.requestFrom(I2C_MAX30102_ADDR, 1, true); // Request third byte of three
+  temp = Wire.read(); // Store byte
+  sample |= temp; // Store third byte
+
+  fifo_read_ptr++;
+  write_reg(REG_FIFO_RD_PTR, fifo_read_ptr); // upadate read ptr
+
+  fifo_read_ptr = read_reg(REG_FIFO_RD_PTR); // Get current read ptr
+
+  sample &= 0x03FFFF; // Mask bits [23:18]
+
+  Serial.print("\nSAMPLE: ");
+  Serial.print(sample, DEC);
+  Serial.print("\n");
+
+  Serial.print("\nEND FIFO_RD: ");
+  Serial.print(fifo_read_ptr, HEX);
+  Serial.print("\n");
+
+  fifo_write_ptr = read_reg(REG_FIFO_WR_PTR); // get current write ptr
+
+  Serial.print("\nEND FIFO_WRITE_PTR: ");
+  Serial.print(fifo_write_ptr, HEX);
+  Serial.print("\n");
+  
+/*
+  // Read IR LED data from FIFO registers
+  Wire.requestFrom(I2C_MAX30102_ADDR, 3, true);
+  temp32 = Wire.read();
+  Serial.print("\nIR: ");
+  Serial.print(temp32, BIN);
+  temp32<<=16;
+  *ir_led += temp32;
+  Wire.requestFrom(I2C_MAX30102_ADDR, 1, true);
+  temp32 = Wire.read();
+  temp32<<=8;
+  *ir_led += temp32;
+  Wire.requestFrom(I2C_MAX30102_ADDR, 1, true);
+  temp32 = Wire.read();
+  *ir_led += temp32;
+
+  *red_led &= 0x03FFFF; // Mask MSB [23:18]
+  *ir_led &= 0x03FFFF; // Mask MSB [23:18]
+*/  
 
   return true;
 }
@@ -204,7 +273,7 @@ void max30102_reset(void) {
   Wire.write(0x40); // Reset the max30102
   tx_status = Wire.endTransmission(true); // Full Stop
 }
-/*
+
 byte read_reg(byte reg) {
 
   byte data;
@@ -230,4 +299,4 @@ void set_reg_ptr(uint8_t addr) {
   Wire.write(addr);
   Wire.endTransmission(true);
 }
-*/
+

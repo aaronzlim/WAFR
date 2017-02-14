@@ -9,6 +9,9 @@
  * 
  */
 
+#ifndef max30102_wire_driver_H
+#define max30102_wire_driver_H
+
 // The Wire library uses 7-bit addresses, and appends the Write (0) / Read (1) bit.
 // The Max30102 has write adderss 0xAE and read address 0xAF
 #define I2C_MAX30102_ADDR 0x57
@@ -36,4 +39,10 @@
 #define REG_PROX_INT_THRESH 0x30
 #define REG_REV_ID 0xFE
 #define REG_PART_ID 0xFF
+
+byte read_reg(byte reg);
+void write_reg(uint8_t addr, uint8_t data);
+void set_reg_ptr(uint8_t addr);
+
+#endif // max30102_wire_driver_H
 
