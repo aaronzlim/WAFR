@@ -89,7 +89,7 @@ bool max30102_read_fifo(uint32_t *red_buffer, uint32_t *ir_buffer, uint8_t idx) 
   }
   
   // Read LED data from FIFO registers
-  max30102_set_reg_ptr(REG_FIFO_DATA); // Point to fifo data register
+  max30102_set_reg_ptr(REG_FIFO_DATA); // Point to fifo data register (0x07)
 
   for(uint8_t j=0; j<num_samples; j++) {
     Wire.requestFrom(I2C_MAX30102_ADDR, 6, true);
