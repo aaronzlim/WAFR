@@ -32,7 +32,9 @@ static int32_t tmp_ir[ BUFFER_SIZE ];
 static int32_t tmp_red[ BUFFER_SIZE ];
 
 void max30102_calc_hr_spo2(uint32_t *red_buffer, uint32_t *ir_buffer, int32_t *spo2, 
-                           int8_t *spo2_valid, int32_t *heart_rate, int8_t *hr_valid); 
+                           int8_t *spo2_valid, int32_t *heart_rate, int8_t *hr_valid);
+
+void find_peaks(uint32_t *data, uint32_t thresh);
 
 
 

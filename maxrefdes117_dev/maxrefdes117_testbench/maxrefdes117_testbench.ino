@@ -74,7 +74,8 @@ void loop() {
   max30102_calc_hr_spo2(red_buffer, ir_buffer, &spo2, &spo2_valid, &heart_rate, &hr_valid);
 
   // DISPLAY DATA (CURRENTLY DEBUGGING DATA)
-  for(i=0; i < data_buffer_length - 3; i++) {
-    Serial.println(ir_buffer[i]);
-  }
+  //for(i=0; i < data_buffer_length - 3; i++) {
+  // Serial.println(ir_buffer[i]);
+  //}
+
 }
