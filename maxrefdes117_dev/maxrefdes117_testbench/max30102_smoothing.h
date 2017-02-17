@@ -13,6 +13,8 @@
 #define max30102_smoothing_H
 
 #define FS 100 // Sampling frequency in Hz
+// NOTE: The actual sampling frequency is set to 400Hz with an averaging factor of 4.
+//       This gives an implemented sampling frequency of 100Hz
 #define BUFFER_SIZE ( FS * 4 ) // 100 samples (4s of data)
 #define MVG_AVG_SIZE 4
 

@@ -15,7 +15,7 @@
 
 uint32_t ir_mean; // Holds DC mean of IR data
 uint32_t threshold = 0;
-uint8_t j; // Used for incrementing
+uint16_t j; // Used for incrementing
 uint8_t num_peaks = 0;
 uint32_t h_rate = 0;
 
@@ -41,7 +41,7 @@ void max30102_calc_hr_spo2(uint32_t *red_buffer, uint32_t *ir_buffer, int32_t *s
 
   find_peaks(tmp_ir, threshold);
 
-  h_rate = (num_peaks * 25 * 60) / BUFFER_SIZE;
+  h_rate = (num_peaks * FS * 60) / BUFFER_SIZE;
 
   Serial.print(h_rate);
 
