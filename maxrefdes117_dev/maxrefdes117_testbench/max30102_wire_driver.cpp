@@ -137,8 +137,8 @@ void max30102_init(void) {
                     // sample avg = 4, fifo rollover=false, fifo almost full = 17
   Wire.write(0x03); // Write to REG_MODE_CONFIG (0x09)
                     // 0x02 for Red only, 0x03 for SpO2 mode, 0x07 multimode LED
-  Wire.write(0x27); // Write to REG_SPO2_CONFIG (0x0A)
-                    // SPO2_ADC range = 4096nA, SPO2 sample rate (100 Hz), LED pulseWidth (411uS)
+  Wire.write(0x2F); // Write to REG_SPO2_CONFIG (0x0A)
+                    // SPO2_ADC range = 4096nA, SPO2 sample rate (400 Hz), LED pulseWidth (411uS)
   Wire.endTransmission(true); // Full Stop
 
   Wire.beginTransmission(I2C_MAX30102_ADDR);

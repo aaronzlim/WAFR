@@ -12,7 +12,7 @@
 #ifndef max30102_smoothing_H
 #define max30102_smoothing_H
 
-#define FS 25 // Sampling frequency Hz
+#define FS 100 // Sampling frequency in Hz
 #define BUFFER_SIZE ( FS * 4 ) // 100 samples (4s of data)
 #define MVG_AVG_SIZE 4
 

@@ -29,7 +29,7 @@
 
 // ------------------------ GLOBAL VARIABLE DECLARATIONS ------------------------
 
-const int32_t data_buffer_length = 100; //buffer length of 100 stores 4 seconds of samples running at 25sps
+const int32_t data_buffer_length = 400; //buffer length of 400 stores 4 seconds of samples running at 100sps
 uint32_t red_buffer[data_buffer_length]; // red LED sensor data
 uint32_t ir_buffer[data_buffer_length]; // infrared LED sensor data
 int32_t spo2; // SPO2 value
