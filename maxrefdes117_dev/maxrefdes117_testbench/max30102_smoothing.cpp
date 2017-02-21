@@ -43,8 +43,6 @@ void max30102_calc_hr_spo2(uint32_t *red_buffer, uint32_t *ir_buffer, int32_t *s
   find_peaks(ir_locs, &num_peaks, tmp_ir, threshold, MVG_AVG_SIZE, MAX_NUM_PEAKS );
 
   // CONTINUE HERE
-
-  // CALCULATE HR
   
   // DEBUGGING
   for(j=0; j < BUFFER_SIZE; j++) {
