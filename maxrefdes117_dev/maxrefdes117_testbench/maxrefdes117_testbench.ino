@@ -29,7 +29,7 @@
 
 // ------------------------ GLOBAL VARIABLE DECLARATIONS ------------------------
 
-const int32_t data_buffer_length = 400; //buffer length of 400 stores 4 seconds of samples running at 100sps
+const int32_t data_buffer_length = 100; //buffer length of 100 stores 4 seconds of samples running at 25sps
 uint32_t red_buffer[data_buffer_length]; // red LED sensor data
 uint32_t ir_buffer[data_buffer_length]; // infrared LED sensor data
 int32_t spo2; // SPO2 value
@@ -37,9 +37,10 @@ int8_t spo2_valid; // indicator to show if the SPO2 calculation is valid
 int32_t heart_rate; // heart rate value
 int8_t hr_valid; // indicator if heart rate calculation is valid
 uint32_t i; // incrementor
-void *wire_obj_ptr; // Used to pass this Wire instance to the max30102 library
 
 //---------------------------------------------------------------------------------
+
+#define FLORA_INTR 10 // The interrupt line will go to pin 10 on the Flora
 
 void setup() {
 
@@ -47,7 +48,7 @@ void setup() {
   max30102_reset(); // Reset the max30102
   Serial.begin(115200); // Serial communication will only be used for debugging
   while(!Serial);       // Wait for serial communication
-  pinMode(10, INPUT); // MAX30102 interrupt output pin to D10 on Flora
+  pinMode(FLORA_INTR, INPUT); // MAX30102 interrupt output pin to D10 on Flora
   delay(1000);
 
   // Read/Clear REG_INTR_STATUS_1 (0x00)
@@ -61,7 +62,7 @@ void loop() {
   
   for(i=0; i<data_buffer_length; i++) {
     
-    while(digitalRead(10)==1); // Wait until the interrupt pin asserts
+    while(digitalRead(FLORA_INTR)==1); // Wait until the interrupt pin asserts
 
     // Read from max30102 FIFO
     if(!max30102_read_fifo(red_buffer, ir_buffer, i)) {
@@ -74,8 +75,8 @@ void loop() {
   max30102_calc_hr_spo2(red_buffer, ir_buffer, &spo2, &spo2_valid, &heart_rate, &hr_valid);
 
   // DISPLAY DATA (CURRENTLY DEBUGGING DATA)
-  //for(i=0; i < data_buffer_length - 3; i++) {
-  // Serial.println(ir_buffer[i]);
-  //}
+  for(i=0; i < data_buffer_length - 3; i++) {
+   Serial.println(ir_buffer[i]);
+  }
 
 }

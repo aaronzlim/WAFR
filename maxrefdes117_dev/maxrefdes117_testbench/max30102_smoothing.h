@@ -12,11 +12,12 @@
 #ifndef max30102_smoothing_H
 #define max30102_smoothing_H
 
-#define FS 100 // Sampling frequency in Hz
+#define FS 25 // Sampling frequency in Hz
 // NOTE: The actual sampling frequency is set to 400Hz with an averaging factor of 4.
 //       This gives an implemented sampling frequency of 100Hz
 #define BUFFER_SIZE ( FS * 4 ) // 100 samples (4s of data)
 #define MVG_AVG_SIZE 4
+#define MAX_NUM_PEAKS 15
 
 const uint8_t uch_spo2_table[184]={ 95, 95, 95, 96, 96, 96, 97, 97, 97, 97, 97, 98, 98, 
               98, 98, 98, 99, 99, 99, 99, 99, 99, 99, 99, 100, 100, 100, 100, 100, 100, 
@@ -33,12 +34,15 @@ const uint8_t uch_spo2_table[184]={ 95, 95, 95, 96, 96, 96, 97, 97, 97, 97, 97, 
 static int32_t tmp_ir[ BUFFER_SIZE ];
 static int32_t tmp_red[ BUFFER_SIZE ];
 
+
 void max30102_calc_hr_spo2(uint32_t *red_buffer, uint32_t *ir_buffer, int32_t *spo2, 
                            int8_t *spo2_valid, int32_t *heart_rate, int8_t *hr_valid);
 
-void find_peaks(uint32_t *data, uint32_t thresh);
+void find_peaks(int32_t *ir_locs, int32_t *num_peaks, int32_t *tmp_ir, uint32_t threshold, uint32_t min_width, uint32_t max_num_peaks);
 
+void peaks_above_min_height(int32_t *ir_locs, int32_t *num_peaks, int32_t *tmp_ir, int32_t *threshold, uint32_t max_num_peaks);
 
+void remove_close_peaks(uint32_t *tmp_ir, uint32_t *ir_locs, uint32_t *num_peaks, uint32_t min_width);
 
 
 
