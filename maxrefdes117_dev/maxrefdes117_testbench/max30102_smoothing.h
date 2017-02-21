@@ -18,8 +18,10 @@
 #define BUFFER_SIZE ( FS * 4 ) // 100 samples (4s of data)
 #define MVG_AVG_SIZE 4
 #define MAX_NUM_PEAKS 15
+#define RATIO_BUFFER_SIZE 5
 
-const uint8_t uch_spo2_table[184]={ 95, 95, 95, 96, 96, 96, 97, 97, 97, 97, 97, 98, 98, 
+// spo2_table is approximated as -45.060 * ratioAverage * ratioAverage + 30.354 * ratioAverage + 94.845 ;
+const uint8_t spo2_table[184]={ 95, 95, 95, 96, 96, 96, 97, 97, 97, 97, 97, 98, 98, 
               98, 98, 98, 99, 99, 99, 99, 99, 99, 99, 99, 100, 100, 100, 100, 100, 100, 
               100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 99, 
               99, 99, 99, 99, 99, 99, 99, 98, 98, 98, 98, 98, 98, 97, 97, 97, 97, 96, 96, 
@@ -43,6 +45,8 @@ void find_peaks(int32_t *ir_locs, int32_t *num_peaks, int32_t *tmp_ir, uint32_t 
 void peaks_above_min_height(int32_t *ir_locs, int32_t *num_peaks, int32_t *tmp_ir, int32_t *threshold, uint32_t max_num_peaks);
 
 void remove_close_peaks(uint32_t *tmp_ir, uint32_t *ir_locs, uint32_t *num_peaks, uint32_t min_width);
+
+void sort_ascending(uint32_t *arr, uint32_t len);
 
 
 

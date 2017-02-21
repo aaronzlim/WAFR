@@ -59,24 +59,53 @@ void setup() {
 }
 
 void loop() {
-  
+
+  // Collect first 100 samples
   for(i=0; i<data_buffer_length; i++) {
     
     while(digitalRead(FLORA_INTR)==1); // Wait until the interrupt pin asserts
 
     // Read from max30102 FIFO
     if(!max30102_read_fifo(red_buffer, ir_buffer, i)) {
-      i--; // If there is nothing to read reset the incrementor and try again.
+      i--; // If there is nothing to read decrement the incrementor and try again.
     }
   }
 
-  
   // CALCULATE HR AND SPO2 (CURRENTLY THIS FUNCTION IS BEING DEBUGGED)
   max30102_calc_hr_spo2(red_buffer, ir_buffer, &spo2, &spo2_valid, &heart_rate, &hr_valid);
 
-  // DISPLAY DATA (CURRENTLY DEBUGGING DATA)
-  for(i=0; i < data_buffer_length - 3; i++) {
-   Serial.println(ir_buffer[i]);
+  for(i = 0; i < data_buffer_length; i++){
+    Serial.println(ir_buffer[i]);
   }
+/*  
+  Serial.print("Made it to while loop");
+  while(1) {
 
+    for(i = FS; i < data_buffer_length; i++) { // Dump 25 samples of old data
+      red_buffer[i-25] = red_buffer[i];
+      ir_buffer[i-25] = ir_buffer[i];
+    }
+
+    // Collect 25 samples of new data
+    for(i = data_buffer_length - FS; i < data_buffer_length; i++) {
+      while(digitalRead(FLORA_INTR) == 1); // wait until the interrupt pin asserts
+
+      if(!max30102_read_fifo(red_buffer, ir_buffer, i)) {
+        i--; // If there is nothing to read decrement the incrementor and try again
+      }
+    }
+
+    Serial.print("\n\nHR = ");
+    Serial.print(heart_rate);
+    Serial.print("\nHR Valid = ");
+    Serial.print(hr_valid);
+    Serial.print("\n\nSPO2 = ");
+    Serial.print(spo2);
+    Serial.print("\nSPO2 Valid = ");
+    Serial.print(spo2_valid);
+
+    max30102_calc_hr_spo2(red_buffer, ir_buffer, &spo2, &spo2_valid, &heart_rate, &hr_valid);
+    
+  }
+*/
 }
