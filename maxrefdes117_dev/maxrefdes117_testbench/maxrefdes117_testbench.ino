@@ -29,14 +29,16 @@
 
 // ------------------------ GLOBAL VARIABLE DECLARATIONS ------------------------
 
-const int32_t data_buffer_length = 100; //buffer length of 100 stores 4 seconds of samples running at 25sps
+const int32_t data_buffer_length = BUFFER_SIZE; //buffer length of 100 stores 4 seconds of samples running at 25sps
 uint32_t red_buffer[data_buffer_length]; // red LED sensor data
 uint32_t ir_buffer[data_buffer_length]; // infrared LED sensor data
+uint32_t num_peaks_arr[PEAKS_BUFFER_SIZE];
+uint32_t total_num_peaks = 0;
 int32_t spo2; // SPO2 value
-int8_t spo2_valid; // indicator to show if the SPO2 calculation is valid
-int32_t heart_rate; // heart rate value
-int8_t hr_valid; // indicator if heart rate calculation is valid
-uint32_t i; // incrementor
+int16_t spo2_valid; // indicator to show if the SPO2 calculation is valid
+int32_t heart_rate, prev_hr = 75; // heart rate value
+int16_t hr_valid; // indicator if heart rate calculation is valid
+uint32_t i, j; // incrementor
 
 //---------------------------------------------------------------------------------
 
@@ -59,53 +61,30 @@ void setup() {
 }
 
 void loop() {
-
-  // Collect first 100 samples
-  for(i=0; i<data_buffer_length; i++) {
+  // Put 5 num_peak samples in num_peaks_arr
+  for(j = 0; j < PEAKS_BUFFER_SIZE; j++) { // Collect 20s worth of peaks (heartbeats)
+    // Collect 100 samples
+    for(i=0; i<data_buffer_length; i++) {
     
-    while(digitalRead(FLORA_INTR)==1); // Wait until the interrupt pin asserts
+      while(digitalRead(FLORA_INTR)==1); // Wait until the interrupt pin asserts
 
-    // Read from max30102 FIFO
-    if(!max30102_read_fifo(red_buffer, ir_buffer, i)) {
-      i--; // If there is nothing to read decrement the incrementor and try again.
-    }
-  }
-
-  // CALCULATE HR AND SPO2 (CURRENTLY THIS FUNCTION IS BEING DEBUGGED)
-  max30102_calc_hr_spo2(red_buffer, ir_buffer, &spo2, &spo2_valid, &heart_rate, &hr_valid);
-
-  for(i = 0; i < data_buffer_length; i++){
-    Serial.println(ir_buffer[i]);
-  }
-/*  
-  Serial.print("Made it to while loop");
-  while(1) {
-
-    for(i = FS; i < data_buffer_length; i++) { // Dump 25 samples of old data
-      red_buffer[i-25] = red_buffer[i];
-      ir_buffer[i-25] = ir_buffer[i];
-    }
-
-    // Collect 25 samples of new data
-    for(i = data_buffer_length - FS; i < data_buffer_length; i++) {
-      while(digitalRead(FLORA_INTR) == 1); // wait until the interrupt pin asserts
-
+      // Read from max30102 FIFO
       if(!max30102_read_fifo(red_buffer, ir_buffer, i)) {
-        i--; // If there is nothing to read decrement the incrementor and try again
+        i--; // If there is nothing to read decrement the incrementor and try again.
       }
     }
-
-    Serial.print("\n\nHR = ");
-    Serial.print(heart_rate);
-    Serial.print("\nHR Valid = ");
-    Serial.print(hr_valid);
-    Serial.print("\n\nSPO2 = ");
-    Serial.print(spo2);
-    Serial.print("\nSPO2 Valid = ");
-    Serial.print(spo2_valid);
-
-    max30102_calc_hr_spo2(red_buffer, ir_buffer, &spo2, &spo2_valid, &heart_rate, &hr_valid);
-    
+    num_peaks_arr[j] = get_num_peaks(ir_buffer); //
   }
-*/
-}
+  
+  for(i = 0; i < PEAKS_BUFFER_SIZE; i++) {
+    total_num_peaks += num_peaks_arr[i];
+  }
+
+  heart_rate = PEAKS_TO_HR(total_num_peaks);
+  heart_rate = (heart_rate + prev_hr) / 2;
+  prev_hr = heart_rate;
+  max30102_calc_spo2(red_buffer, ir_buffer, &spo2, &spo2_valid);
+
+  // DISPLAY DATA
+
+} // END LOOP

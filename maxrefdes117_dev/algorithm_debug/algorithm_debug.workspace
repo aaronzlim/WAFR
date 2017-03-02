@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeLite_Workspace Name="algorithm_debug" Database="" Version="10.0.0">
+  <Project Name="algorithm_debug" Path="algorithm_debug.project" Active="Yes"/>
+  <BuildMatrix>
+    <WorkspaceConfiguration Name="Debug" Selected="yes">
+      <Environment/>
+      <Project Name="algorithm_debug" ConfigName="Debug"/>
+      <Project Name="max30102_parse_data" ConfigName="Debug"/>
+    </WorkspaceConfiguration>
+    <WorkspaceConfiguration Name="Release" Selected="yes">
+      <Environment/>
+      <Project Name="algorithm_debug" ConfigName="Debug"/>
+      <Project Name="max30102_parse_data" ConfigName="Release"/>
+    </WorkspaceConfiguration>
+  </BuildMatrix>
+</CodeLite_Workspace>

@@ -1,0 +1,9 @@
+[{
+  "directory": "/Users/aaronzlim/Semesters/senior_design/WAFR/maxrefdes117_dev/algorithm_debug",
+  "command": "/usr/bin/clang++ -g -Wall -I. -I. -MG -MP -MT./Debug/algorithm_debug.cpp.o -MF./Debug/algorithm_debug.cpp.o.d -MM algorithm_debug.cpp",
+  "file": "/Users/aaronzlim/Semesters/senior_design/WAFR/maxrefdes117_dev/algorithm_debug/algorithm_debug.cpp"
+ }, {
+  "directory": "/Users/aaronzlim/Semesters/senior_design/WAFR/maxrefdes117_dev/algorithm_debug",
+  "command": "/usr/bin/clang++ -c /Users/aaronzlim/Semesters/senior_design/WAFR/maxrefdes117_dev/algorithm_debug/algorithm_debug.cpp -g -Wall -o ./Debug/algorithm_debug.cpp.o -I. -I.",
+  "file": "/Users/aaronzlim/Semesters/senior_design/WAFR/maxrefdes117_dev/algorithm_debug/algorithm_debug.cpp"
+ }]

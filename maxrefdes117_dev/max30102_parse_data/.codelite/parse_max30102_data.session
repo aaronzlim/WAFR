@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Session Name="/Users/aaronzlim/Semesters/senior_design/WAFR/maxrefdes117_dev/max30102_parse_data/parse_max30102_data.workspace">
+  <int Value="0" Name="m_selectedTab"/>
+  <wxString Value="/Users/aaronzlim/Semesters/senior_design/WAFR/maxrefdes117_dev/max30102_parse_data/parse_max30102_data.workspace" Name="m_workspaceName"/>
+  <TabInfoArray Name="TabInfoArray"/>
+  <SerializedObject Name="m_breakpoints">
+    <long Value="0" Name="Count"/>
+  </SerializedObject>
+</Session>
