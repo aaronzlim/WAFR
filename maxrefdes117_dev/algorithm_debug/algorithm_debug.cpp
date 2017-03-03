@@ -15,13 +15,6 @@
 #include <fstream>
 #include <math.h>
 
-#define DATA_WIN_SECS 4
-#define PEAKS_BUFFER_SIZE 5
-#define PEAKS_TO_HR(peaks) (peaks*60)/(DATA_WIN_SECS*PEAKS_BUFFER_SIZE)
-
-#define min(a,b) a<b ? a:b
-#define max(a,b) a>b ? a:b
-
 int main(int argc, char * argv[]) {
     
   uint32_t red_buffer[100] = {0};
@@ -35,6 +28,11 @@ int main(int argc, char * argv[]) {
   
   uint32_t total_num_peaks = 0, avg_hr = 75;
   uint32_t num_peaks_arr[5] = {0,0,0,0,0};
+  uint32_t spo2_ratio_arr[5] = {0,0,0,0,0};
+  float avg_ratio = 0;
+  uint32_t avg_spo2 = 99;
+  
+  
 
 
 // ---------------------- READ DATA FROM FILES AND PLACE IN BUFFERS ------------------------
@@ -70,19 +68,22 @@ int main(int argc, char * argv[]) {
           ir_buffer[i] = data_buffer_ir[start_point + i];
         }
         num_peaks_arr[j] = get_num_peaks(ir_buffer);
+        spo2_ratio_arr[j] = get_spo2_ratio(red_buffer, ir_buffer);
         start_point += 100; // Get next 4sec of data
     }
     total_num_peaks = ( num_peaks_arr[0] + num_peaks_arr[1] + num_peaks_arr[2] + num_peaks_arr[3] + num_peaks_arr[4] );
-    std::cout << total_num_peaks << std::endl;
     heart_rate = PEAKS_TO_HR(total_num_peaks);
     avg_hr = (avg_hr + heart_rate) / 2;
+    
+    avg_ratio = (spo2_ratio_arr[0] + spo2_ratio_arr[1] + spo2_ratio_arr[2] + spo2_ratio_arr[3] + spo2_ratio_arr[4]) / 500.0;
+    spo2 = (uint32_t) ((-45.060 * avg_ratio * avg_ratio) + (30.354 * avg_ratio) + 94.845);
+    avg_spo2 = (avg_spo2 + spo2) / 2;
+    std::cout << avg_ratio << std::endl;
+    
     std::cout << "HEART RATE: " << avg_hr << std::endl;
+    std::cout << "SPO2: " << avg_spo2 << std::endl;
   }
 //-------------------------------------------------------------------------------------------
-
-  // CALCULATE HR AND SPO2
-  
-  max30102_calc_spo2(red_buffer, ir_buffer, &spo2, &spo2_valid);
 
   // DISPLAY RESULTS
   //std::cout << "\n........HR: " << heart_rate << " BPM" << '\n';
@@ -126,13 +127,12 @@ uint32_t get_num_peaks(uint32_t *ir_buffer) {
   return num_peaks;
 }
 
-void max30102_calc_spo2(uint32_t *red_buffer, uint32_t *ir_buffer, int32_t *spo2, int16_t *spo2_valid) {
+uint32_t get_spo2_ratio(uint32_t *red_buffer, uint32_t *ir_buffer) {
 
   uint16_t j; // Used for incrementing
-  
-  // --------------------- SPO2 CALCULATION ------------------------
-  int32_t ratio;
+
   int32_t ir_dc = 0, red_dc = 0, ir_ac = 0, red_ac = 0;
+  uint32_t num, den;
   
   // Load raw data again for SPO2 calculation
   for(j = 0; j < BUFFER_SIZE; j++) {
@@ -164,20 +164,15 @@ void max30102_calc_spo2(uint32_t *red_buffer, uint32_t *ir_buffer, int32_t *spo2
   ir_ac = (int32_t) sqrt(ir_ac);
   red_ac = (int32_t) sqrt(red_ac);
   
-  ratio = (red_ac * ir_dc) / (ir_ac * red_dc);
+  num =  (red_ac * ir_dc);
+  den =  (ir_ac * red_dc) >> 7;
   
-  ratio = (int32_t) (-45.060 * ratio * ratio + 30.354 * ratio + 94.845);
+  if(num < 0) num = (-1 * num);
+  if(den < 0) den = (-1 * den);
   
-  if(ratio > 2 && ratio < 184) {
-    *spo2 = spo2_table[ratio]; // Consult look up table
-    *spo2_valid = 1;
-  }
-  else {
-    *spo2 = -999; // SPO2 ratio is out of range, bad data
-    *spo2_valid = 0;
-  }
+  return num/den;
+  
 }
-
 
 void peaks_above_min_height(int32_t *ir_locs, uint32_t *num_peaks, int32_t *tmp_ir, uint32_t threshold, uint32_t max_num_peaks) {
   /*

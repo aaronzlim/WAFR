@@ -22,9 +22,10 @@
 #define MIN_PEAK_WIDTH 6     // 8 = max discernable HR is 180 bpm
                              // 7 = max discernable HR is 210 bpm
                              // 6 = max discernable HR is 225 bpm
-#define PEAKS_BUFFER_SIZE 5
-#define PEAKS_TO_HR(peaks) (peaks*60)/(DATA_WIN_SECS*PEAKS_BUFFER_SIZE)
+#define INITIAL_SAMPLE_SIZE 5 // Number of loops to fill hr and spo2 buffers initially
+#define PEAKS_TO_HR(peaks) (peaks*60)/(DATA_WIN_SECS*INITIAL_SAMPLE_SIZE)
 
+/*
 // spo2_table is approximated as -45.060 * ratioAverage * ratioAverage + 30.354 * ratioAverage + 94.845 ;
 const uint8_t spo2_table[184]={ 95, 95, 95, 96, 96, 96, 97, 97, 97, 97, 97, 98, 98, 
               98, 98, 98, 99, 99, 99, 99, 99, 99, 99, 99, 100, 100, 100, 100, 100, 100, 
@@ -37,12 +38,13 @@ const uint8_t spo2_table[184]={ 95, 95, 95, 96, 96, 96, 97, 97, 97, 97, 97, 98, 
               49, 48, 47, 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34, 33, 31, 30, 
               29, 28, 27, 26, 25, 23, 22, 21, 20, 19, 17, 16, 15, 14, 12, 11, 10, 9, 7, 6, 
               5, 3, 2, 1 } ;
+*/
 
 static int32_t tmp_ir[ BUFFER_SIZE ];
 static int32_t tmp_red[ BUFFER_SIZE ];
 
 
-void max30102_calc_spo2(uint32_t *red_buffer, uint32_t *ir_buffer, int32_t *spo2, int16_t *spo2_valid);
+float get_spo2_ratio(uint32_t *red_buffer, uint32_t *ir_buffer);
                            
 uint32_t get_num_peaks(uint32_t *ir_buffer);
 

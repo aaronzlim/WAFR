@@ -14,6 +14,7 @@
 #include <SoftwareSerial.h>
 
 uint32_t get_num_peaks(uint32_t *ir_buffer) {
+  
   uint32_t ir_mean; // Holds DC mean of data
   uint32_t threshold = 0; // Minimum height of a peak
   uint32_t num_peaks = 0; // Count the number of peaks (heartbeats)
@@ -44,14 +45,12 @@ uint32_t get_num_peaks(uint32_t *ir_buffer) {
   return num_peaks;
 }
 
-void max30102_calc_spo2(uint32_t *red_buffer, uint32_t *ir_buffer, int32_t *spo2, int16_t *spo2_valid) {
+float get_spo2_ratio(uint32_t *red_buffer, uint32_t *ir_buffer) {
 
   uint16_t j; // Used for incrementing
 
-  //-------------------SPO2 Calculation-------------------
-
-  int32_t ratio;
   int32_t ir_dc = 0, red_dc = 0, ir_ac = 0, red_ac = 0;
+  uint32_t num, den;
   
   // Load raw data again for SPO2 calculation
   for(j = 0; j < BUFFER_SIZE; j++) {
@@ -83,19 +82,10 @@ void max30102_calc_spo2(uint32_t *red_buffer, uint32_t *ir_buffer, int32_t *spo2
   ir_ac = (int32_t) sqrt(ir_ac);
   red_ac = (int32_t) sqrt(red_ac);
   
-  ratio = (red_ac * ir_dc) / (ir_ac * red_dc); // Compute SPO2 ratio
+  num = (red_ac * ir_dc);
+  den = (ir_ac * red_dc) >> 7; // Prepare for x100 to preserve decimal
 
-  // Convert to look up table index
-  ratio = (int32_t) (-45.060 * ratio * ratio + 30.354 * ratio + 94.845);
-  
-  if(ratio > 2 && ratio < 184) {
-    *spo2 = spo2_table[ratio]; // Consult look up table
-    *spo2_valid = 1;
-  }
-  else {
-    *spo2 = -1; // SPO2 ratio is out of range, bad data
-    *spo2_valid = 0;
-  }
+  return num/den;
   
 }
 

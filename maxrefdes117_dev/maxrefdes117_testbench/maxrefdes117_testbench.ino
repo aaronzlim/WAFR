@@ -16,28 +16,26 @@
 #include <USI_TWI_Master.h>
 #include <Wire.h>
 
-/* NOTE ABOUT Wire.endTransmission()
- * The Wire.endTransmission() function has 5 possible states
- * 0: success
- * 1: data too long to fit in transmit buffer
- * 2: received NACK on transmit of address
- * 3: received NACK on transmit of data
- * 4: other error
- *  
- * As a check use, tx_status = Wire.endTransmission();
- * then check to make sure it was successful */
-
 // ------------------------ GLOBAL VARIABLE DECLARATIONS ------------------------
 
+// DATA COLLECTION
 const int32_t data_buffer_length = BUFFER_SIZE; //buffer length of 100 stores 4 seconds of samples running at 25sps
 uint32_t red_buffer[data_buffer_length]; // red LED sensor data
 uint32_t ir_buffer[data_buffer_length]; // infrared LED sensor data
-uint32_t num_peaks_arr[PEAKS_BUFFER_SIZE];
+
+// HR CALCULATION
+uint32_t num_peaks_arr[INITIAL_SAMPLE_SIZE];
 uint32_t total_num_peaks = 0;
+int32_t heart_rate, avg_hr = 75; // heart rate value
+bool hr_valid; // indicator if heart rate calculation is valid
+
+// SPO2 CALCULATION
+uint32_t spo2_ratio_arr[INITIAL_SAMPLE_SIZE];
+float avg_ratio = 0;
+uint32_t avg_spo2 = 99;
 int32_t spo2; // SPO2 value
-int16_t spo2_valid; // indicator to show if the SPO2 calculation is valid
-int32_t heart_rate, prev_hr = 75; // heart rate value
-int16_t hr_valid; // indicator if heart rate calculation is valid
+bool spo2_valid; // indicator to show if the SPO2 calculation is valid
+
 uint32_t i, j; // incrementor
 
 //---------------------------------------------------------------------------------
@@ -62,7 +60,7 @@ void setup() {
 
 void loop() {
   // Put 5 num_peak samples in num_peaks_arr
-  for(j = 0; j < PEAKS_BUFFER_SIZE; j++) { // Collect 20s worth of peaks (heartbeats)
+  for(j = 0; j < INITIAL_SAMPLE_SIZE; j++) { // Collect 20s worth of peaks (heartbeats)
     // Collect 100 samples
     for(i=0; i<data_buffer_length; i++) {
     
@@ -73,18 +71,30 @@ void loop() {
         i--; // If there is nothing to read decrement the incrementor and try again.
       }
     }
-    num_peaks_arr[j] = get_num_peaks(ir_buffer); //
+    num_peaks_arr[j] = get_num_peaks(ir_buffer);
+    spo2_ratio_arr[j] = get_spo2_ratio(red_buffer, ir_buffer);
   }
   
-  for(i = 0; i < PEAKS_BUFFER_SIZE; i++) {
+  for(i = 0; i < INITIAL_SAMPLE_SIZE; i++) {
     total_num_peaks += num_peaks_arr[i];
   }
 
+  // CALCULATE HR
   heart_rate = PEAKS_TO_HR(total_num_peaks);
-  heart_rate = (heart_rate + prev_hr) / 2;
-  prev_hr = heart_rate;
-  max30102_calc_spo2(red_buffer, ir_buffer, &spo2, &spo2_valid);
+  avg_hr = (heart_rate + avg_hr) / 2;
+
+  // CALCULATE SPO2
+  for(i = 0; i < INITIAL_SAMPLE_SIZE; i++) { avg_ratio += spo2_ratio_arr[i]; }
+  avg_ratio = (avg_spo2 / (100 * INITIAL_SAMPLE_SIZE));
+  spo2 = (uint32_t) ((-45.060 * avg_ratio * avg_ratio) + (30.354 * avg_ratio) + 94.845);
+  avg_spo2 = (avg_spo2 + spo2) / 2;
+
+  // NEED TO CHECK IF THESE ARE VALID!
 
   // DISPLAY DATA
+  Serial.print("HEART RATE : ");
+  Serial.println(avg_hr);
+  Serial.print("SPO2 : ");
+  Serial.println(avg_spo2);
 
 } // END LOOP
