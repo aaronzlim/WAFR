@@ -5,6 +5,7 @@
 
 ratio = 0:.01:1.825;
 
+%(-45.060 .* ratio .* ratio) + (30.354 .* ratio) + 94.845
 spo2 = (-45.060 .* ratio .* ratio) + (30.354 .* ratio) + 94.845;
 
 figure();

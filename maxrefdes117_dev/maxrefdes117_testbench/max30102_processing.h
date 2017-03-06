@@ -1,7 +1,7 @@
 /*
  * Author: Aaron Lim
  * Project: WAFR
- * Filename: max30102_smoothing.h
+ * Filename: max30102_processing.h
  * Description: Data smoothing algorithm for the max30102 pulse oximetry sensor
  * 
  * Revision History:
@@ -9,8 +9,8 @@
  * 
  */
 
-#ifndef max30102_smoothing_H
-#define max30102_smoothing_H
+#ifndef max30102_processing_H
+#define max30102_processing_H
 
 #define FS 25 // Sampling frequency in Hz
 #define DATA_WIN_SECS 4 // How many seconds of data is processed at once
@@ -62,4 +62,4 @@ void sort_descending(int32_t *arr, uint32_t len);
 
 
 
-#endif // max30102_smoothing_H
+#endif // max30102_processing_H
