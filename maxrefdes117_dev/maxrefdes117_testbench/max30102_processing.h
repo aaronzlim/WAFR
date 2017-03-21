@@ -19,7 +19,7 @@
 #define BUFFER_SIZE ( FS * DATA_WIN_SECS ) // 100 samples (4s of data)
 #define MVG_AVG_SIZE 4 // Four point moving average
 #define MAX_NUM_PEAKS 15 // 15 peaks in 100 samples (4sec)
-#define MIN_PEAK_WIDTH 7     // 8 = max discernable HR is 180 bpm
+#define MIN_PEAK_WIDTH 8     // 8 = max discernable HR is 180 bpm
                              // 7 = max discernable HR is 210 bpm
                              // 6 = max discernable HR is 225 bpm
 #define INITIAL_SAMPLE_SIZE 5 // Number of loops to fill hr and spo2 buffers initially
