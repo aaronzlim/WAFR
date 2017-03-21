@@ -15,6 +15,7 @@
 #include <TinyWireM.h>
 #include <USI_TWI_Master.h>
 #include <Wire.h>
+#include <SoftwareSerial.h>
 
 // Remember to call Wire.begin in your Arduino sketch
 // The Wire object only uses class variables, so even though
@@ -87,6 +88,13 @@ bool max30102_read_fifo(uint32_t *red_buffer, uint32_t *ir_buffer, uint8_t idx) 
   if(!num_samples) {
     return false; // No data to read
   }
+
+  if(fifo_write_ptr == 0) {
+    // For some reason when the buffer overflows the read pointer resets to register 4 instead of 0.
+    // These lines make sure the next iteration puts the read pointer at 0 and the write pointer at 1.
+    max30102_write_reg(REG_FIFO_RD_PTR, 0x1B);
+    max30102_write_reg(REG_FIFO_WR_PTR, 0x1C);
+  }
   
   // Read LED data from FIFO registers
   max30102_set_reg_ptr(REG_FIFO_DATA); // Point to fifo data register (0x07)
@@ -104,8 +112,22 @@ bool max30102_read_fifo(uint32_t *red_buffer, uint32_t *ir_buffer, uint8_t idx) 
     ir_sample &= 0x03FFFF;
   }
 
-  red_buffer[idx] = red_sample;
-  ir_buffer[idx] = ir_sample;
+  if(fifo_read_ptr != 0 && fifo_write_ptr != 0) {
+    // Was getting weird data when the fifo rolled over from 31 to 0
+    // choosing to ignore the first and last pieces of data
+    red_buffer[idx] = red_sample;
+    ir_buffer[idx] = ir_sample;
+  }
+
+  // DEBUG
+  //Serial.print("READ PTR: ");
+  //Serial.println(fifo_read_ptr);
+  //Serial.print("WRITE PTR: ");
+  //Serial.println(fifo_write_ptr);
+  //Serial.print("IR: ");
+  //Serial.println(ir_sample);
+  //Serial.println("----------------");
+  // DEBUG
 
   return true;
 }

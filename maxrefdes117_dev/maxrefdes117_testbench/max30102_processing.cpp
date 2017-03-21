@@ -184,7 +184,7 @@ void sort_descending(int32_t *arr, uint32_t len) {
     
     uint16_t i, j, temp;
     
-    for (i = 0; i < MAX_NUM_PEAKS - 1; i++) {
+    for (i = 0; i < len - 1; i++) {
         j = i + 1;
         temp = arr[j];
         while(j > 0 && temp > arr[j-1]) {

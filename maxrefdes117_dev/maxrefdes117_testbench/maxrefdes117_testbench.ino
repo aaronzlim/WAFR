@@ -67,12 +67,12 @@ void loop() {
   // NEED TO CHECK IF THESE ARE VALID!
 
   // DISPLAY DATA
-  Serial.println("------------------------------");
-  Serial.print("HEART RATE : ");
+  //Serial.println("------------------------------");
+  //Serial.print("HEART RATE : ");
   Serial.println(avg_hr);
-  Serial.print("SPO2 : ");
-  Serial.println(avg_spo2);
-  Serial.println("------------------------------");
+  //Serial.print("SPO2 : ");
+  //Serial.println(avg_spo2);
+  //Serial.println("------------------------------");
 
   max30102_get_new_sample(); // get a new sample
 
