@@ -67,26 +67,21 @@ void loop() {
   
   // NEED TO CHECK IF THESE ARE VALID!
 
-/*
-  // DISPLAY DATA
-  Serial.println("------------------");
-  Serial.print("HR: ");
-  Serial.println(heart_rate);
-  Serial.print("HEART RATE : ");
-  Serial.println(avg_hr);
-  Serial.print("HEART RATE VALID: ");
-  Serial.println(hr_valid);
-  Serial.print("SPO2 : ");
-  Serial.println(avg_spo2);
-  Serial.print("SPO2 VALID: ");
-  Serial.println(spo2_valid);
-  Serial.println("------------------");
-*/ 
-  Serial.print(num_peaks_arr[4]);
-  Serial.print(" ... ");
-  Serial.println(avg_hr);
-  max30102_get_new_sample(); // get a new sample
+    /*
+   * if( CONNECTED ) {
+   *   if( HR > 175 || SPO2 < 90) {
+   *     send data and/or alert
+   *   }
+   *  }
+   *  else {
+   *    try to reconnect
+   *  }
+   * 
+   * 
+   */
 
+  max30102_get_new_sample(); // get a new sample
+  
 } // END LOOP
 
 void max30102_get_new_sample() {
@@ -117,7 +112,7 @@ void max30102_calc_hr_spo2() {
 
   // CALCULATE HR
   heart_rate = PEAKS_TO_HR(total_num_peaks);
-  if(heart_rate < 225 && heart_rate > 30 && abs(heart_rate - avg_hr) < 10) {
+  if(heart_rate < 225 && heart_rate > 30 && abs(heart_rate - avg_hr) < 8) {
       avg_hr = (heart_rate + avg_hr) / 2;
       hr_valid = 1;
   }
