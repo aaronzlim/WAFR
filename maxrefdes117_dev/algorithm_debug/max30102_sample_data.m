@@ -23,7 +23,7 @@ end
 samples = 0:length(data) - 1;
 
 fig = figure;
-stem(samples, data);
+plot(samples, data);
 hold on;
 plot(samples,mean_arr);
 xlabel('Samples');

@@ -40,7 +40,7 @@ uint32_t i, j; // incrementor
 
 //---------------------------------------------------------------------------------
 
-#define MAX30102_INTR 10 // The interrupt line will go to pin 10 on the Flora
+#define MAX30102_INTR 10 // The MAX30102 interrupt line will go to pin 10 on the Flora
 
 void setup() {
 
@@ -58,7 +58,10 @@ void setup() {
   // Initialize the max30102
   max30102_init();
   //Serial.println("Collecting initial data. Please wait 20s...");
+  //Serial.println("Collecting first 20 seconds of data.");
   max30102_first_buffer_load(); // Load 20s of data into buffers
+  max30102_calc_hr_spo2();
+  avg_hr = heart_rate;
 }
 
 void loop() {
@@ -82,9 +85,9 @@ void loop() {
   Serial.println(spo2_valid);
   Serial.println("------------------");
 */ 
-  Serial.print(num_peaks_arr[4]);
-  Serial.print(" ... ");
-  Serial.println(avg_hr);
+  //Serial.print(num_peaks_arr[4]);
+  //Serial.print(" ... ");
+  //Serial.println(avg_hr);
   max30102_get_new_sample(); // get a new sample
 
 } // END LOOP
@@ -117,7 +120,7 @@ void max30102_calc_hr_spo2() {
 
   // CALCULATE HR
   heart_rate = PEAKS_TO_HR(total_num_peaks);
-  if(heart_rate < 225 && heart_rate > 30 && abs(heart_rate - avg_hr) < 10) {
+  if(heart_rate < 225 && heart_rate > 30) {// && abs(heart_rate - avg_hr) < 10) {
       avg_hr = (heart_rate + avg_hr) / 2;
       hr_valid = 1;
   }

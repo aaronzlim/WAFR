@@ -28,15 +28,22 @@ uint32_t get_num_peaks(uint32_t *ir_buffer) {
   // Remove DC component from IR data
   for(j=0; j < BUFFER_SIZE; j++) tmp_ir[j] = (ir_buffer[j] < ir_mean ? 0 : (ir_buffer[j] - ir_mean));
   
-  // Apply a 4 point moving average
+  // Apply moving average filter
   for(j=0; j < ((BUFFER_SIZE - MVG_AVG_SIZE) + 1); j++) {
-    tmp_ir[j] = ( tmp_ir[j] + tmp_ir[j+1] + tmp_ir[j+2] + tmp_ir[j+3] ) / (int)4;
+    tmp_ir[j] = ( tmp_ir[j] + tmp_ir[j+1] + tmp_ir[j+2] + tmp_ir[j+3] + tmp_ir[j+4]
+                  + tmp_ir[j+5]) / MVG_AVG_SIZE;
   }
 
   // Calculate threshold 
   threshold = 0;
   for ( j=0 ; j<BUFFER_SIZE ;j++){threshold += tmp_ir[j];}
   threshold = (threshold / BUFFER_SIZE);
+
+  for(j= 0; j < 100; j++) {
+    Serial.print(tmp_ir[j]);
+    Serial.print(",");
+    Serial.println(threshold);
+  }
 
   for(j = 0; j < MAX_NUM_PEAKS; j++) peak_locs[j] = 0;
   peaks_above_min_height(peak_locs, &num_peaks, tmp_ir, threshold, MAX_NUM_PEAKS);
