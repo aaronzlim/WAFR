@@ -41,10 +41,7 @@ function compare_samples(wafrFileName, comparisonFileName)
     end
     
     x = 4.*x;
-    disp(length(comparisonData));
-    disp(length(wafrData));
-    error = abs(comparisonData - wafrData) ./ comparisonData;
-    error = 100 .* error;
+    error = abs(comparisonData - wafrData);
     avg_error = sum(error) / length(error);
     avg_error_arr = zeros(1,length(error));
     for k = 1:length(error)
@@ -71,6 +68,8 @@ function compare_samples(wafrFileName, comparisonFileName)
     hold off;
     title('Error: Difference between WAFR and Comparison Device');
     xlabel('Time (secs)');
-    ylabel('error (%)');
+    ylabel('error (\Delta BPM)');
+    legend('Error', 'Average Error');
+    legend('show');
 
 end

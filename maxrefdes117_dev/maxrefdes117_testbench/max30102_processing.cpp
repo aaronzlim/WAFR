@@ -36,15 +36,15 @@ uint32_t get_num_peaks(uint32_t *ir_buffer) {
 
   // Calculate threshold 
   threshold = 0;
-  for ( j=0 ; j<BUFFER_SIZE ;j++){threshold += tmp_ir[j];}
+  for ( j=0 ; j<BUFFER_SIZE ;j++){threshold += tmp_ir[j]; Serial.println(tmp_ir[j]);}
   threshold = (threshold / BUFFER_SIZE);
-
+/*
   for(j= 0; j < 100; j++) {
     Serial.print(tmp_ir[j]);
     Serial.print(",");
     Serial.println(threshold);
   }
-
+*/
   for(j = 0; j < MAX_NUM_PEAKS; j++) peak_locs[j] = 0;
   peaks_above_min_height(peak_locs, &num_peaks, tmp_ir, threshold, MAX_NUM_PEAKS);
   remove_close_peaks(tmp_ir, peak_locs, &num_peaks, MIN_PEAK_WIDTH);

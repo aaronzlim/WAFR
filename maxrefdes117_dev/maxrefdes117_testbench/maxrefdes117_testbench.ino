@@ -25,14 +25,16 @@ uint32_t ir_buffer[data_buffer_length]; // infrared LED sensor data
 
 // HR CALCULATION
 uint32_t num_peaks_arr[INITIAL_SAMPLE_SIZE];
+uint32_t heart_rate_arr[INITIAL_SAMPLE_SIZE];
 uint32_t total_num_peaks = 0;
 int32_t heart_rate, avg_hr = 75; // heart rate value
 bool hr_valid; // indicator if heart rate calculation is valid
 
 // SPO2 CALCULATION
 uint32_t spo2_ratio_arr[INITIAL_SAMPLE_SIZE];
+uint32_t spo2_arr[INITIAL_SAMPLE_SIZE];
 float avg_ratio = 0;
-uint32_t avg_spo2 = 99;
+uint32_t avg_spo2 = 0;
 int32_t spo2; // SPO2 value
 bool spo2_valid; // indicator to show if the SPO2 calculation is valid
 
@@ -60,15 +62,34 @@ void setup() {
   //Serial.println("Collecting initial data. Please wait 20s...");
   //Serial.println("Collecting first 20 seconds of data.");
   max30102_first_buffer_load(); // Load 20s of data into buffers
+  num_peaks_arr[0] = (num_peaks_arr[1] 
+                      + num_peaks_arr[2] 
+                      + num_peaks_arr[3] 
+                      + num_peaks_arr[4]) / 4; // First read is erroneous, so replace it
   max30102_calc_hr_spo2();
+  for(i = 0; i < INITIAL_SAMPLE_SIZE; i++) { // Initialize HR and SPO2
+    heart_rate_arr[i] = heart_rate;
+    spo2_arr[i] = spo2;
+  }
   avg_hr = heart_rate;
+  avg_hr = spo2;
 }
 
 void loop() {
 
-  max30102_calc_hr_spo2();  // get hr and spo2 from initial data at setup
-  
-  // NEED TO CHECK IF THESE ARE VALID!
+// DECISION MAKING ABBOUT TRANSMISSION
+/*
+ if( avg_hr < 40 ) {
+     hr_abnormal = 1;
+  } else {hr_abnormal = 0;}
+  if( avg_spo2 < 92 ) {
+      spo2_abnormal = 1;
+  } else {spo2_abnormal = 0;}
+
+  if (hr_abnormal || spo2_abnormal) {
+    // TRANSMIT HR, SPO2, HR_ABNORMAL, SPO2_ABNORMAL
+  }
+*/
 
 /*
   // DISPLAY DATA
@@ -85,10 +106,13 @@ void loop() {
   Serial.println(spo2_valid);
   Serial.println("------------------");
 */ 
-  //Serial.print(num_peaks_arr[4]);
-  //Serial.print(" ... ");
-  //Serial.println(avg_hr);
+//Serial.println(avg_hr);
+
   max30102_get_new_sample(); // get a new sample
+
+  max30102_calc_hr_spo2();  // get hr and spo2
+
+  // NEED TO CHECK IF THESE ARE VALID!
 
 } // END LOOP
 
@@ -120,8 +144,14 @@ void max30102_calc_hr_spo2() {
 
   // CALCULATE HR
   heart_rate = PEAKS_TO_HR(total_num_peaks);
-  if(heart_rate < 225 && heart_rate > 30) {// && abs(heart_rate - avg_hr) < 10) {
-      avg_hr = (heart_rate + avg_hr) / 2;
+  if(heart_rate < 225 && heart_rate > 30) {// && abs(heart_rate - avg_hr) < 30) {
+      avg_hr = 0;
+      for(i = 0; i < INITIAL_SAMPLE_SIZE - 1; i++) { // Shift heart rate array left by one
+        heart_rate_arr[i] = heart_rate_arr[i+1];
+        avg_hr += heart_rate_arr[i];
+      }
+      heart_rate_arr[INITIAL_SAMPLE_SIZE - 1] = heart_rate; // Add new heart rate to heart rate array
+      avg_hr = (avg_hr + heart_rate) / INITIAL_SAMPLE_SIZE; // Calculate average HR from heart rate array
       hr_valid = 1;
   }
   else { hr_valid = 0; }
@@ -131,12 +161,16 @@ void max30102_calc_hr_spo2() {
   avg_ratio = (avg_ratio / (100 * INITIAL_SAMPLE_SIZE));
   spo2 = (uint32_t) ((-55.426 * avg_ratio * avg_ratio) + (50.129 * avg_ratio) + 89.612);
   if(spo2 <= 100 && spo2 >= 80) {
-      avg_spo2 = (avg_spo2 + spo2) / 2;
+      avg_spo2 = 0;
+      for(i = 0; i < INITIAL_SAMPLE_SIZE-1; i++){
+        spo2_arr[i] = spo2_arr[i+1];
+        avg_spo2 += spo2_arr[i];
+      }
+      spo2_arr[INITIAL_SAMPLE_SIZE-1] = spo2;
+      avg_spo2 = (avg_spo2 + spo2) / INITIAL_SAMPLE_SIZE;
       spo2_valid = 1;
   }
-  else {
-    spo2_valid = 0;
-  }
+  else {spo2_valid = 0;}
   
 }
 

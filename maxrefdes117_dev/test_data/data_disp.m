@@ -10,8 +10,8 @@
 
 function data_disp(fileName, dataType)
 
-    if ~(strcmp(dataType, 'HR') || strcmp(dataType, 'SPO2'))
-        error('dataType must be string HR or SPO2');
+    if ~(strcmp(dataType, 'HR') || strcmp(dataType, 'SPO2') || strcmp(dataType, 'HB'))
+        error('dataType must be string HR, HB, or SPO2');
     end
 
     dataFile = fopen(fileName, 'r');

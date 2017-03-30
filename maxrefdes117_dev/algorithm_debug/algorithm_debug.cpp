@@ -31,11 +31,10 @@ int main(int argc, char * argv[]) {
   uint32_t spo2_ratio_arr[5] = {0,0,0,0,0};
   float avg_ratio = 0;
   uint32_t avg_spo2 = 99;
-  
-  
 
 
 // ---------------------- READ DATA FROM FILES AND PLACE IN BUFFERS ------------------------
+/*
   std::ifstream infile_red("data_two_minutes_red.txt"); // Open raw red data
   if(!infile_red) {
       std::cout << "Cannot open input file.\n"; // make sure file can be opened
@@ -83,7 +82,16 @@ int main(int argc, char * argv[]) {
     std::cout << "HEART RATE: " << avg_hr << std::endl;
     std::cout << "SPO2: " << avg_spo2 << std::endl;
   }
+  */
 //-------------------------------------------------------------------------------------------
+
+  std::fstream infile("sample_75bpm_24_12_56.txt");
+  if(!infile) {std::cout << "ERROR READING FILE"; return 0;}
+  
+  j = 0;
+  while(infile >> datum) {ir_buffer[j++] = datum;}
+  
+  std::cout << get_num_peaks(ir_buffer) << '\n';
 
   // DISPLAY RESULTS
   //std::cout << "\n........HR: " << heart_rate << " BPM" << '\n';
@@ -108,20 +116,24 @@ uint32_t get_num_peaks(uint32_t *ir_buffer) {
   ir_mean = (ir_mean / BUFFER_SIZE);
 
   // Remove DC component from IR data
-  for(j=0; j < BUFFER_SIZE; j++) tmp_ir[j] = (ir_buffer[j] < ir_mean ? 0 : (ir_buffer[j] - ir_mean));
-  
-  // Apply a 4 point moving average
+  // FOR THIS EXAMPLE I'M DOING DC IS ALREADY REMOVED!
+  //for(j=0; j < BUFFER_SIZE; j++) tmp_ir[j] = (ir_buffer[j] < ir_mean ? 0 : (ir_buffer[j] - ir_mean));
+  // JUST LOAD BUFFER
+  for(j = 0; j < BUFFER_SIZE; j++) tmp_ir[j] = ir_buffer[j];
+  // Apply a 6 point moving average
   for(j=0; j < ((BUFFER_SIZE - MVG_AVG_SIZE) + 1); j++) {
-    tmp_ir[j] = ( tmp_ir[j] + tmp_ir[j+1] + tmp_ir[j+2] + tmp_ir[j+3] ) / (int)4;
+    tmp_ir[j] = ( tmp_ir[j] + tmp_ir[j+1] + tmp_ir[j+2] + tmp_ir[j+3] + tmp_ir[j+4] + tmp_ir[j+5] ) / (int)6;
   }
 
   // Calculate threshold 
   threshold = 0;
   for ( j=0 ; j<BUFFER_SIZE ;j++){threshold += tmp_ir[j];}
   threshold = (threshold / BUFFER_SIZE);
+  std::cout << "THRESHOLD: " << threshold << '\n';
 
   for(j = 0; j < MAX_NUM_PEAKS; j++) peak_locs[j] = 0;
   peaks_above_min_height(peak_locs, &num_peaks, tmp_ir, threshold, MAX_NUM_PEAKS);
+  for(j = 0; j < MAX_NUM_PEAKS; j++) std::cout << peak_locs[j] << '\n';
   remove_close_peaks(tmp_ir, peak_locs, &num_peaks, MIN_PEAK_WIDTH);
   
   return num_peaks;

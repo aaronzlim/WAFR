@@ -16,9 +16,9 @@
 // NOTE: The actual sampling frequency is set to 400Hz with an averaging factor of 4.
 //       This gives an implemented sampling frequency of 100Hz
 #define BUFFER_SIZE ( FS * 4 ) // 100 samples (4s of data)
-#define MVG_AVG_SIZE 4
+#define MVG_AVG_SIZE 6
 #define MAX_NUM_PEAKS 15
-#define MIN_PEAK_WIDTH 6     // 8 = max discernable HR is 180 bpm
+#define MIN_PEAK_WIDTH 7     // 8 = max discernable HR is 180 bpm
                              // 7 = max discernable HR is 210 bpm
                              // 6 = max discernable HR is 225 bpm
 #define RATIO_BUFFER_SIZE 5
