@@ -1,110 +1,135 @@
 /*
-* Author: Aaron Lim
-* Project: WAFR
-* File Name: maxrefdes117_testbench.ino
-* Release: 2 February, 2017 V1.00 Initial Release
-*
-* This is test code used to help interface the Maxrefdes117 pulse oximetry sensor with
-* the Adafruit Flora using the Wire library.
-*/
+ * Authors: Aaron Lim
+ *          Justin Fraumeni
+ *          Jen Becerra
+ *          Christian Reidelsheimer
+ *          
+ * Project: WAFR (Wearable Alert for First Responders)
+ * 
+ * Description: Wearable heart rate and spo2 monitor with motion detection
+ * 
+ * Organization: University of Rochester
+ *               Department of Electrical & Computer Engineering
+ *               Senior Design              
+ * 
+ * Date: 30 March 2017
+ * 
+ * Version: 1.0.0 First Release
+ * 
+ */
 
 #include <Arduino.h>
-#include "max30102_wire_driver.h"
-#include "max30102_processing.h"
-#include <SoftwareSerial.h>
 #include <TinyWireM.h>
 #include <USI_TWI_Master.h>
 #include <Wire.h>
 
+#include <Adafruit_MMA8451.h>
+#include <Adafruit_Sensor.h>
+
+#include "max30102_wire_driver.h"
+#include "max30102_processing.h"
+
+#include "BluefruitConfig.h"
+#include <Adafruit_BLE.h>
+#include <Adafruit_BluefruitLE_UART.h>
+
+
+#include <SoftwareSerial.h>
+
+#define MAX30102_INTR 10 // The MAX30102 interrupt line will go to pin 10 on the Flora
+#define MMA8451_INTR 9
+
+#define PACKET_SIZE 40
+
 // ------------------------ GLOBAL VARIABLE DECLARATIONS ------------------------
 
+// BLE variables
+Adafruit_BluefruitLE_UART ble(Serial1, BLUEFRUIT_UART_MODE_PIN);
+char update_packet[PACKET_SIZE + 1];
+char *packet_ptr = update_packet;
+
+// MMA8451 variables
+Adafruit_MMA8451 mma = Adafruit_MMA8451();
+uint16_t xyz_buffer[3];
+
 // MAX30102 DATA COLLECTION
-const int32_t data_buffer_length = BUFFER_SIZE; // Defined in max30102_smoothing.h
-uint32_t red_buffer[data_buffer_length]; // red LED sensor data
-uint32_t ir_buffer[data_buffer_length]; // infrared LED sensor data
+uint32_t red_buffer[BUFFER_SIZE]; // red LED sensor data
+uint32_t ir_buffer[BUFFER_SIZE]; // infrared LED sensor data
 
 // HR CALCULATION
 uint32_t num_peaks_arr[INITIAL_SAMPLE_SIZE];
+uint32_t heart_rate_arr[INITIAL_SAMPLE_SIZE];
 uint32_t total_num_peaks = 0;
-int32_t heart_rate, avg_hr = 75; // heart rate value
+int32_t heart_rate, avg_hr; // heart rate value
 bool hr_valid; // indicator if heart rate calculation is valid
 
 // SPO2 CALCULATION
 uint32_t spo2_ratio_arr[INITIAL_SAMPLE_SIZE];
+uint32_t spo2_arr[INITIAL_SAMPLE_SIZE];
 float avg_ratio = 0;
-uint32_t avg_spo2 = 99;
+uint32_t avg_spo2 = 0;
 int32_t spo2; // SPO2 value
 bool spo2_valid; // indicator to show if the SPO2 calculation is valid
 
-uint32_t i, j; // incrementor
+uint16_t i, j; // incrementor
+
+uint16_t timer = 0;
+uint16_t timer_tmp = 0;
+
+// Distress Flags
+bool hr_abnormal = 0, spo2_abnormal = 0;
+bool horizontal_long_flag = 0, orientation_change = 0;
 
 //---------------------------------------------------------------------------------
 
-#define MAX30102_INTR 10 // The interrupt line will go to pin 10 on the Flora
-
-void setup() {
-
+ void setup() {
   Wire.begin(); // Join the bus
-  max30102_reset(); // Reset the max30102
-  Serial.begin(115200); // Serial communication will only be used for debugging
-  while(!Serial);       // Wait for serial communication
-  pinMode(MAX30102_INTR, INPUT); // MAX30102 interrupt output pin to D10 on Flora
-  delay(1000);
 
-  //Serial.println("Clearing status registers...");
-  // Read/Clear REG_INTR_STATUS_1 (0x00)
+  // SERIAL COMMUNICATION USED FOR DEBUGGING
+  Serial.begin(115200);
+  while(!Serial);
+
+  if(!ble.begin(VERBOSE_MODE)) {
+    Serial.println(F("Couldn't find Bluefruit"));
+  }
+
+  // INITIALIZE THE MMA8451 ACCELEROMETER
+  mma.begin();
+  mma.setRange(MMA8451_RANGE_2_G);
+  pinMode(MMA8451_INTR, INPUT);
+
+  // INITIALIZE the MAX30102 PULSE OXIMETER
+  max30102_reset();
+  pinMode(MAX30102_INTR, INPUT);
+  // Read/Clear the interrupt status registers
   max30102_clear_interrupt_status_regs();
-  //Serial.println("Initializing MAX30102 registers...");
-  // Initialize the max30102
+  // Setup all max30102 registers
   max30102_init();
-  //Serial.println("Collecting initial data. Please wait 20s...");
-  max30102_first_buffer_load(); // Load 20s of data into buffers
-}
-
-void loop() {
-
-  max30102_calc_hr_spo2();  // get hr and spo2 from initial data at setup
   
-  // NEED TO CHECK IF THESE ARE VALID!
+//--------------------- MAX30102 FIRST BUFFER LOAD ------------------------
+  // Put 5 num_peak samples in num_peaks_arr
+  for(i = 0; i < INITIAL_SAMPLE_SIZE; i++) { // Collect 20s worth of peaks (heartbeats)
+    // Collect 100 samples
+    for(j=0; j < BUFFER_SIZE; j++) {
+    
+      while(digitalRead(MAX30102_INTR)==1); // Wait until the interrupt pin asserts
 
-    /*
-   * if( CONNECTED ) {
-   *   if( HR > 175 || SPO2 < 90) {
-   *     send data and/or alert
-   *   }
-   *  }
-   *  else {
-   *    try to reconnect
-   *  }
-   * 
-   * 
-   */
-
-  max30102_get_new_sample(); // get a new sample
-  
-} // END LOOP
-
-void max30102_get_new_sample() {
-
-  int m;
-  // Collect 100 new samples (4 seconds)
-  for(m = 0; m < data_buffer_length; m++) {
-    while(digitalRead(MAX30102_INTR) == 1); // Wait until the interrupt pin asserts
-    if(!max30102_read_fifo(red_buffer, ir_buffer, m)) {
-      m--; // If there is nothing to read decrement and try again
+      // Read from max30102 FIFO
+      if(!max30102_read_fifo(red_buffer, ir_buffer, j)) {
+        j--; // If there is nothing to read decrement the incrementor and try again.
+      }
     }
+    num_peaks_arr[i] = get_num_peaks(ir_buffer);
+    spo2_ratio_arr[i] = get_spo2_ratio(red_buffer, ir_buffer);
   }
+//-------------------------------------------------------------------------
 
-  for(m = 0; m < INITIAL_SAMPLE_SIZE - 1; m++) {
-    num_peaks_arr[m] = num_peaks_arr[m+1];
-    spo2_ratio_arr[m] = spo2_ratio_arr[m+1];
-  }
-  num_peaks_arr[INITIAL_SAMPLE_SIZE - 1] = get_num_peaks(ir_buffer);
-  spo2_ratio_arr[INITIAL_SAMPLE_SIZE - 1] = get_spo2_ratio(red_buffer, ir_buffer);
-}
+  num_peaks_arr[0] = (num_peaks_arr[1] + 
+                      num_peaks_arr[2] + 
+                      num_peaks_arr[3] + 
+                      num_peaks_arr[4]) / 4; // First read is erroneous, so replace it                 
 
-void max30102_calc_hr_spo2() {
-
+//---------------------- CALCULATE HR AND SPO2 -------------------------
   total_num_peaks = 0;
   for(i = 0; i < INITIAL_SAMPLE_SIZE; i++) {
     total_num_peaks += num_peaks_arr[i];
@@ -112,8 +137,14 @@ void max30102_calc_hr_spo2() {
 
   // CALCULATE HR
   heart_rate = PEAKS_TO_HR(total_num_peaks);
-  if(heart_rate < 225 && heart_rate > 30 && abs(heart_rate - avg_hr) < 8) {
-      avg_hr = (heart_rate + avg_hr) / 2;
+  if(heart_rate < 225 && heart_rate > 30) {// && abs(heart_rate - avg_hr) < 30) {
+      avg_hr = 0;
+      for(i = 0; i < INITIAL_SAMPLE_SIZE - 1; i++) { // Shift heart rate array left by one
+        heart_rate_arr[i] = heart_rate_arr[i+1];
+        avg_hr += heart_rate_arr[i];
+      }
+      heart_rate_arr[INITIAL_SAMPLE_SIZE - 1] = heart_rate; // Add new heart rate to heart rate array
+      avg_hr = (avg_hr + heart_rate) / INITIAL_SAMPLE_SIZE; // Calculate average HR from heart rate array
       hr_valid = 1;
   }
   else { hr_valid = 0; }
@@ -123,34 +154,144 @@ void max30102_calc_hr_spo2() {
   avg_ratio = (avg_ratio / (100 * INITIAL_SAMPLE_SIZE));
   spo2 = (uint32_t) ((-55.426 * avg_ratio * avg_ratio) + (50.129 * avg_ratio) + 89.612);
   if(spo2 <= 100 && spo2 >= 80) {
-      avg_spo2 = (avg_spo2 + spo2) / 2;
+      avg_spo2 = 0;
+      for(i = 0; i < INITIAL_SAMPLE_SIZE-1; i++){
+        spo2_arr[i] = spo2_arr[i+1];
+        avg_spo2 += spo2_arr[i];
+      }
+      spo2_arr[INITIAL_SAMPLE_SIZE-1] = spo2;
+      avg_spo2 = (avg_spo2 + spo2) / INITIAL_SAMPLE_SIZE;
       spo2_valid = 1;
   }
-  else {
-    spo2_valid = 0;
-  }
-  
-}
+  else {spo2_valid = 0;}  
+// ----------------------------------------------------------------------
 
-void max30102_first_buffer_load() {
-
-  int m, n;
-  
-  // Put 5 num_peak samples in num_peaks_arr
-  for(m = 0; m < INITIAL_SAMPLE_SIZE; m++) { // Collect 20s worth of peaks (heartbeats)
-    // Collect 100 samples
-    for(n=0; n<data_buffer_length; n++) {
-    
-      while(digitalRead(MAX30102_INTR)==1); // Wait until the interrupt pin asserts
-
-      // Read from max30102 FIFO
-      if(!max30102_read_fifo(red_buffer, ir_buffer, n)) {
-        n--; // If there is nothing to read decrement the incrementor and try again.
-      }
+    // Initialize HR and SPO2 buffers
+    for(i = 0; i < INITIAL_SAMPLE_SIZE; i++) {
+      heart_rate_arr[i] = heart_rate; 
+      spo2_arr[i] = spo2;
     }
-    num_peaks_arr[m] = get_num_peaks(ir_buffer);
-    spo2_ratio_arr[m] = get_spo2_ratio(red_buffer, ir_buffer);
-  }
+    avg_hr = heart_rate;
+    avg_hr = spo2;
+ }
+
+ void loop() {
+
+  // Get a new sample from the MMA8451
+  mma.read();
+
+//--------------------- CHECK FOR CONDITIONS OF STRESS -------------------
+  // These values are for testing, actual will be <40 and >165
+  if( avg_hr < 70 || avg_hr > 80 ) { hr_abnormal = 1;} 
+  else {hr_abnormal = 0;}
+  if( avg_spo2 < 95 ) {spo2_abnormal = 1;}
+  else {spo2_abnormal = 0; }
+
+  /*
+   * if( mma.z >= 7.5 m/s^2 || mma.z <= -7.5 m/s^2 ){
+   * 
+   *   if( abs(timer-timer_tmp) > 3 ) {
+   *     // Wait 15-20 seconds and see if still horizontal
+   *     // if so, then:
+   *     horizontal_long_flag = 1;
+   *     timer_tmp = timer;
+   *   } else {horizontal_long_flag = 0;}
+   *   
+   * } else {horizontal_long_flag = 0;}
+   * 
+   * //calculate difference in xyz from previous loop
+   * // mma.x - xyz_buffer[0], mma.y - xyz_buffer[1], mma.z - xyz_buffer[2]
+   * // determine what orientation changes need to go in if/else statement(s)
+   * 
+   * if( ) {
+   *   
+   * } else {
+   * 
+   */
   
-}
+//------------------------------------------------------------------------
+
+//---------------------- DECIDE TO TRANSMIT DATA -------------------------
+/*
+ * if( hr_abnormal || spo2_abnormal || horizontal_long_flag || orientation_change || timer > 5 ) {
+ *   timer = 0;
+ *   // Assemble packet  
+ *   *( (uint32_t*) packet_ptr ) = avg_hr;
+ *   *( (uint32_t*) &packet_ptr[4] ) = avg_spo2;
+ *   *( (uint32_t*) &packet_ptr[8] ) = xyz_buffer[0];
+ *   *( (uint32_t*) &packet_ptr[12] ) = xyz_buffer[1];
+ *   *( (uint32_t*) &packet_ptr[16] ) = xyz_buffer[2];
+ *   *( (uint32_t*) &packet_ptr[20] ) = mma.x;
+ *   *( (uint32_t*) &packet_ptr[24] ) = mma.y;
+ *   *( (uint32_t*) &packet_ptr[28] ) = mma.z;
+ *   *( (bool*) &packet_ptr[32] ) = hr_abnormal;
+ *   *( (bool*) &packet_ptr[33] ) = spo2_abnormal;
+ *   *( (bool*) &packet_ptr[34] ) = horizontal_long_flag;
+ *   *( (bool*) &packet_ptr[35] ) = orientation_change;
+ *   
+ *   // Send to the BLE board
+ *   ble.print("AT+BLEUARTTX=");
+ *   ble.println(update_packet);
+ *   
+ *   // Protocol for a dropped packet???
+ * }
+ */
+//------------------------------------------------------------------------
+
+//----------------- GET A NEW SAMPLE FROM MAX30102 --------------------
+
+  // Collect 100 new samples (4 seconds)
+  for(i = 0; i < BUFFER_SIZE; i++) {
+    while(digitalRead(MAX30102_INTR) == 1); // Wait until the interrupt pin asserts
+    if(!max30102_read_fifo(red_buffer, ir_buffer, i)) {
+      i--; // If there is nothing to read decrement and try again
+    }
+  }
+
+  for(i = 0; i < INITIAL_SAMPLE_SIZE - 1; i++) {
+    num_peaks_arr[i] = num_peaks_arr[i+1];
+    spo2_ratio_arr[i] = spo2_ratio_arr[i+1];
+  }
+  num_peaks_arr[INITIAL_SAMPLE_SIZE - 1] = get_num_peaks(ir_buffer);
+  spo2_ratio_arr[INITIAL_SAMPLE_SIZE - 1] = get_spo2_ratio(red_buffer, ir_buffer);
+//---------------------------------------------------------------------
+  
+//------------------- CALCULATE HR AND SPO2 ---------------------------
+  total_num_peaks = 0;
+  for(i = 0; i < INITIAL_SAMPLE_SIZE; i++) {
+    total_num_peaks += num_peaks_arr[i];
+  }
+
+  // CALCULATE HR
+  heart_rate = PEAKS_TO_HR(total_num_peaks);
+  if(heart_rate < 225 && heart_rate > 30) {// && abs(heart_rate - avg_hr) < 30) {
+      avg_hr = 0;
+      for(i = 0; i < INITIAL_SAMPLE_SIZE - 1; i++) { // Shift heart rate array left by one
+        heart_rate_arr[i] = heart_rate_arr[i+1];
+        avg_hr += heart_rate_arr[i];
+      }
+      heart_rate_arr[INITIAL_SAMPLE_SIZE - 1] = heart_rate; // Add new heart rate to heart rate array
+      avg_hr = (avg_hr + heart_rate) / INITIAL_SAMPLE_SIZE; // Calculate average HR from heart rate array
+      hr_valid = 1;
+  }
+  else { hr_valid = 0; }
+
+  // CALCULATE SPO2
+  for(i = 0; i < INITIAL_SAMPLE_SIZE; i++) { avg_ratio += spo2_ratio_arr[i]; }
+  avg_ratio = (avg_ratio / (100 * INITIAL_SAMPLE_SIZE));
+  spo2 = (uint32_t) ((-55.426 * avg_ratio * avg_ratio) + (50.129 * avg_ratio) + 89.612);
+  if(spo2 <= 100 && spo2 >= 80) {
+      avg_spo2 = 0;
+      for(i = 0; i < INITIAL_SAMPLE_SIZE-1; i++){
+        spo2_arr[i] = spo2_arr[i+1];
+        avg_spo2 += spo2_arr[i];
+      }
+      spo2_arr[INITIAL_SAMPLE_SIZE-1] = spo2;
+      avg_spo2 = (avg_spo2 + spo2) / INITIAL_SAMPLE_SIZE;
+      spo2_valid = 1;
+  }
+  else {spo2_valid = 0;}
+//---------------------------------------------------------------------
+  
+ }
 

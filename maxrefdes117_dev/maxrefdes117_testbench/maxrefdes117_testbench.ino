@@ -19,9 +19,8 @@
 // ------------------------ GLOBAL VARIABLE DECLARATIONS ------------------------
 
 // MAX30102 DATA COLLECTION
-const int32_t data_buffer_length = BUFFER_SIZE; // Defined in max30102_smoothing.h
-uint32_t red_buffer[data_buffer_length]; // red LED sensor data
-uint32_t ir_buffer[data_buffer_length]; // infrared LED sensor data
+uint32_t red_buffer[BUFFER_SIZE]; // red LED sensor data
+uint32_t ir_buffer[BUFFER_SIZE]; // infrared LED sensor data
 
 // HR CALCULATION
 uint32_t num_peaks_arr[INITIAL_SAMPLE_SIZE];
@@ -34,11 +33,11 @@ bool hr_valid; // indicator if heart rate calculation is valid
 uint32_t spo2_ratio_arr[INITIAL_SAMPLE_SIZE];
 uint32_t spo2_arr[INITIAL_SAMPLE_SIZE];
 float avg_ratio = 0;
-uint32_t avg_spo2 = 0;
-int32_t spo2; // SPO2 value
+uint16_t avg_spo2 = 0;
+int16_t spo2; // SPO2 value
 bool spo2_valid; // indicator to show if the SPO2 calculation is valid
 
-uint32_t i, j; // incrementor
+uint16_t i, j; // incrementor
 
 //---------------------------------------------------------------------------------
 
@@ -53,24 +52,22 @@ void setup() {
   pinMode(MAX30102_INTR, INPUT); // MAX30102 interrupt output pin to D10 on Flora
   delay(1000);
 
-  //Serial.println("Clearing status registers...");
   // Read/Clear REG_INTR_STATUS_1 (0x00)
   max30102_clear_interrupt_status_regs();
-  //Serial.println("Initializing MAX30102 registers...");
   // Initialize the max30102
   max30102_init();
-  //Serial.println("Collecting initial data. Please wait 20s...");
-  //Serial.println("Collecting first 20 seconds of data.");
   max30102_first_buffer_load(); // Load 20s of data into buffers
-  num_peaks_arr[0] = (num_peaks_arr[1] 
-                      + num_peaks_arr[2] 
-                      + num_peaks_arr[3] 
-                      + num_peaks_arr[4]) / 4; // First read is erroneous, so replace it
+  num_peaks_arr[0] = (num_peaks_arr[1] + 
+                      num_peaks_arr[2] + 
+                      num_peaks_arr[3] + 
+                      num_peaks_arr[4]) / 4; // First read is erroneous, so replace it
+  
   max30102_calc_hr_spo2();
-  for(i = 0; i < INITIAL_SAMPLE_SIZE; i++) { // Initialize HR and SPO2
-    heart_rate_arr[i] = heart_rate;
+  // Initialize HR and SPO2 buffers
+  for(i = 0; i < INITIAL_SAMPLE_SIZE; i++) {
+    heart_rate_arr[i] = heart_rate; 
     spo2_arr[i] = spo2;
-  }
+    }
   avg_hr = heart_rate;
   avg_hr = spo2;
 }
@@ -90,7 +87,6 @@ void loop() {
     // TRANSMIT HR, SPO2, HR_ABNORMAL, SPO2_ABNORMAL
   }
 */
-
 /*
   // DISPLAY DATA
   Serial.println("------------------");
@@ -105,8 +101,7 @@ void loop() {
   Serial.print("SPO2 VALID: ");
   Serial.println(spo2_valid);
   Serial.println("------------------");
-*/ 
-//Serial.println(avg_hr);
+*/
 
   max30102_get_new_sample(); // get a new sample
 
@@ -120,7 +115,7 @@ void max30102_get_new_sample() {
 
   int m;
   // Collect 100 new samples (4 seconds)
-  for(m = 0; m < data_buffer_length; m++) {
+  for(m = 0; m < BUFFER_SIZE; m++) {
     while(digitalRead(MAX30102_INTR) == 1); // Wait until the interrupt pin asserts
     if(!max30102_read_fifo(red_buffer, ir_buffer, m)) {
       m--; // If there is nothing to read decrement and try again
@@ -181,7 +176,7 @@ void max30102_first_buffer_load() {
   // Put 5 num_peak samples in num_peaks_arr
   for(m = 0; m < INITIAL_SAMPLE_SIZE; m++) { // Collect 20s worth of peaks (heartbeats)
     // Collect 100 samples
-    for(n=0; n<data_buffer_length; n++) {
+    for(n=0; n<BUFFER_SIZE; n++) {
     
       while(digitalRead(MAX30102_INTR)==1); // Wait until the interrupt pin asserts
 
