@@ -1,3 +1,8 @@
+//based upon arduino sketch
+//uses Arduino Wire and Adafruit libraries
+//currently rewriting both this and libraries
+
+
 
 #include <Wire.h>
 #include <Adafruit_MMA8451.h>
@@ -62,7 +67,7 @@ void loop() {
   Serial.println("m/s^2 ");
  // */
   /* Get the orientation of the sensor */
-  uint8_t o = mma.getOrientation();
+ /* uint8_t o = mma.getOrientation();
   
   switch (o) {
     case MMA8451_PL_PUF: 
@@ -92,5 +97,5 @@ void loop() {
     }
   Serial.println();
   delay(500);
-  
+ */ 
 }
