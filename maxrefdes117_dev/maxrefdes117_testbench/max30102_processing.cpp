@@ -36,7 +36,7 @@ uint32_t get_num_peaks(uint32_t *ir_buffer) {
 
   // Calculate threshold 
   threshold = 0;
-  for ( j=0 ; j<BUFFER_SIZE ;j++){threshold += tmp_ir[j]; Serial.println(tmp_ir[j]);}
+  for ( j=0 ; j<BUFFER_SIZE ;j++){threshold += tmp_ir[j];}
   threshold = (threshold / BUFFER_SIZE);
 /*
   for(j= 0; j < 100; j++) {

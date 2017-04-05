@@ -102,6 +102,7 @@ void loop() {
   Serial.println(spo2_valid);
   Serial.println("------------------");
 */
+Serial.println(avg_hr);
 
   max30102_get_new_sample(); // get a new sample
 

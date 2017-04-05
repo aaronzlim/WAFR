@@ -4,7 +4,7 @@
  *          Jen Becerra
  *          Christian Reidelsheimer
  *          
- * Project: WAFR (Wearable Alert for First Responders)
+ * Project: WAFR - Wearable Alert for First Responders
  * 
  * Description: Wearable heart rate and spo2 monitor with motion detection
  * 
@@ -33,7 +33,6 @@
 #include <Adafruit_BLE.h>
 #include <Adafruit_BluefruitLE_UART.h>
 
-
 #include <SoftwareSerial.h>
 
 #define MAX30102_INTR 10 // The MAX30102 interrupt line will go to pin 10 on the Flora
@@ -44,7 +43,7 @@
 // ------------------------ GLOBAL VARIABLE DECLARATIONS ------------------------
 
 // BLE variables
-Adafruit_BluefruitLE_UART ble(Serial1, BLUEFRUIT_UART_MODE_PIN);
+//Adafruit_BluefruitLE_UART ble(Serial1, BLUEFRUIT_UART_MODE_PIN);
 char update_packet[PACKET_SIZE + 1];
 char *packet_ptr = update_packet;
 
@@ -71,7 +70,7 @@ uint32_t avg_spo2 = 0;
 int32_t spo2; // SPO2 value
 bool spo2_valid; // indicator to show if the SPO2 calculation is valid
 
-uint16_t i, j; // incrementor
+uint32_t i, j; // incrementor
 
 uint16_t timer = 0;
 uint16_t timer_tmp = 0;
@@ -83,20 +82,29 @@ bool horizontal_long_flag = 0, orientation_change = 0;
 //---------------------------------------------------------------------------------
 
  void setup() {
+  
   Wire.begin(); // Join the bus
 
   // SERIAL COMMUNICATION USED FOR DEBUGGING
-  Serial.begin(115200);
+  // DO NOT USE SERIAL COMMUNICATION DURING I2C TRANSACTIONS!!!
+  Serial.begin(9600);
   while(!Serial);
+//  Serial.println("SERIAL COMMUNICATION INITIATED: 9600 BAUD");
+  
+//  Serial.println("FLORA JOINED BUS AS MASTER");
 
+/*
   if(!ble.begin(VERBOSE_MODE)) {
     Serial.println(F("Couldn't find Bluefruit"));
   }
-
+*/
   // INITIALIZE THE MMA8451 ACCELEROMETER
   mma.begin();
   mma.setRange(MMA8451_RANGE_2_G);
-  pinMode(MMA8451_INTR, INPUT);
+  mma.setDataRate(MMA8451_DATARATE_1_56_HZ);
+  // pinMode(MMA8451_INTR, INPUT); // This may or may not be used...
+//  Serial.println("INITIALIZED MMA8451 ACCEL");
+  delay(100);
 
   // INITIALIZE the MAX30102 PULSE OXIMETER
   max30102_reset();
@@ -105,15 +113,16 @@ bool horizontal_long_flag = 0, orientation_change = 0;
   max30102_clear_interrupt_status_regs();
   // Setup all max30102 registers
   max30102_init();
-  
+  delay(100);
+//  Serial.println("INITIALIZED MAX30102 PULSE OXIMETER");
+//  Serial.println("STARTING FIRST BUFFER LOAD");
+  delay(100);
 //--------------------- MAX30102 FIRST BUFFER LOAD ------------------------
   // Put 5 num_peak samples in num_peaks_arr
   for(i = 0; i < INITIAL_SAMPLE_SIZE; i++) { // Collect 20s worth of peaks (heartbeats)
     // Collect 100 samples
     for(j=0; j < BUFFER_SIZE; j++) {
-    
       while(digitalRead(MAX30102_INTR)==1); // Wait until the interrupt pin asserts
-
       // Read from max30102 FIFO
       if(!max30102_read_fifo(red_buffer, ir_buffer, j)) {
         j--; // If there is nothing to read decrement the incrementor and try again.
@@ -137,7 +146,7 @@ bool horizontal_long_flag = 0, orientation_change = 0;
 
   // CALCULATE HR
   heart_rate = PEAKS_TO_HR(total_num_peaks);
-  if(heart_rate < 225 && heart_rate > 30) {// && abs(heart_rate - avg_hr) < 30) {
+  if(heart_rate < 225 && heart_rate > 30) {
       avg_hr = 0;
       for(i = 0; i < INITIAL_SAMPLE_SIZE - 1; i++) { // Shift heart rate array left by one
         heart_rate_arr[i] = heart_rate_arr[i+1];
@@ -166,26 +175,37 @@ bool horizontal_long_flag = 0, orientation_change = 0;
   else {spo2_valid = 0;}  
 // ----------------------------------------------------------------------
 
-    // Initialize HR and SPO2 buffers
-    for(i = 0; i < INITIAL_SAMPLE_SIZE; i++) {
-      heart_rate_arr[i] = heart_rate; 
-      spo2_arr[i] = spo2;
-    }
-    avg_hr = heart_rate;
-    avg_hr = spo2;
+  // Initialize HR and SPO2 buffers
+  for(i = 0; i < INITIAL_SAMPLE_SIZE; i++) {
+    heart_rate_arr[i] = heart_rate; 
+    spo2_arr[i] = spo2;
+  }
+  avg_hr = heart_rate;
+  avg_hr = spo2;
+
+  mma.read();
+  
+  delay(100);
+//  Serial.println("MAX30102 FIRST DATA LOAD COMPLETE\n");
+  delay(100);
  }
 
  void loop() {
 
   // Get a new sample from the MMA8451
+  xyz_buffer[0] = mma.x;
+  xyz_buffer[1] = mma.y;
+  xyz_buffer[2] = mma.z;
   mma.read();
 
 //--------------------- CHECK FOR CONDITIONS OF STRESS -------------------
   // These values are for testing, actual will be <40 and >165
+  
   if( avg_hr < 70 || avg_hr > 80 ) { hr_abnormal = 1;} 
   else {hr_abnormal = 0;}
   if( avg_spo2 < 95 ) {spo2_abnormal = 1;}
   else {spo2_abnormal = 0; }
+  
 
   /*
    * if( mma.z >= 7.5 m/s^2 || mma.z <= -7.5 m/s^2 ){
@@ -209,6 +229,20 @@ bool horizontal_long_flag = 0, orientation_change = 0;
    * 
    */
   
+//------------------------------------------------------------------------
+
+//-------------------- DISPLAY DATA FOR DEBUGGING ------------------------
+
+  Serial.print("HR: "); Serial.print(avg_hr);
+  Serial.print(" -- SPO2: "); Serial.print(avg_spo2);
+  Serial.print(" -- X: "); Serial.print(mma.x);
+  Serial.print(" -- Y: "); Serial.print(mma.y);
+  Serial.print(" -- Z: "); Serial.print(mma.z);
+  Serial.print(" -- HR_ABNORMAL: "); Serial.print(hr_abnormal);
+  Serial.print(" -- SPO2_ABNORMAL: "); Serial.print(spo2_abnormal);
+//  Serial.print(" -- HZL_LONG_FLAG: "); Serial.print(horizontal_long_flag);
+//  Serial.print(" -- OR_CHANGE: "); Serial.print(orientation_change);
+  Serial.println("\n--------------------------------------------------------");
 //------------------------------------------------------------------------
 
 //---------------------- DECIDE TO TRANSMIT DATA -------------------------
@@ -254,7 +288,10 @@ bool horizontal_long_flag = 0, orientation_change = 0;
   }
   num_peaks_arr[INITIAL_SAMPLE_SIZE - 1] = get_num_peaks(ir_buffer);
   spo2_ratio_arr[INITIAL_SAMPLE_SIZE - 1] = get_spo2_ratio(red_buffer, ir_buffer);
+  
 //---------------------------------------------------------------------
+
+  
   
 //------------------- CALCULATE HR AND SPO2 ---------------------------
   total_num_peaks = 0;
@@ -292,6 +329,6 @@ bool horizontal_long_flag = 0, orientation_change = 0;
   }
   else {spo2_valid = 0;}
 //---------------------------------------------------------------------
-  
+
  }
 

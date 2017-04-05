@@ -16,6 +16,7 @@ void setup()
 }
 
 
+
 void loop()
 {
   byte error, address;
@@ -55,5 +56,5 @@ void loop()
   else
     Serial.println("done\n");
 
-  delay(5000);           // wait 5 seconds for next scan
+  delay(1000);           // wait 5 seconds for next scan
 }
