@@ -16,6 +16,25 @@
 #include <USI_TWI_Master.h>
 #include <Wire.h>
 
+/*!!!!!!!!!!! CHANGES MADE IN NEWER VERSION OF SOFTWARE !!!!!!!!!!!!!!!!!!!!!!!!!
+  ! Due to a memory overflow issue when using multiple sensors as well
+  ! as the BLE module I had to reduce the size of the 
+  ! data that was being processed at once. Instead of 100 samples being
+  ! processed per loop only 75 samples are being processed per loop.
+  ! This resulted in the following changes:
+  ! 
+  ! + DATA_WIN_SECS changed from 4 to 3 in max30102_processing.h
+  ! + BUFFER_SIZE now 75 samples instead of 100
+  ! + MAX_NUM_PEAKS is calculated using (225*DATA_WIN_SECS)/60
+  ! + Applying a moving average filter in function get_num_peaks in file 
+  !   max30102_processing.cpp is done with a 'for' loop
+  ! + Removed global incrementor variables 'i' and 'j' and used local
+  !   varaibles 'r' and 's' in each 'for' loop in this file 
+  !   (ble_testbench_max30102)
+  ! 
+  ! These changes are not reflected in this version of the software
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
+
 // ------------------------ GLOBAL VARIABLE DECLARATIONS ------------------------
 
 // MAX30102 DATA COLLECTION

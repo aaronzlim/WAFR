@@ -14,17 +14,32 @@
  * 
  * Date: 5 April 2017
  * 
- * Version: 1.0.1 First Release
+ * Version: 1.0.1
  * 
  */
+
+/*!!!!!!!!!!!!!!!!!!!!! CHANGES MADE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ! Due to a memory overflow issue I had to reduce the size of the 
+  ! data that was being processed at once. Instead of 100 samples being
+  ! processed per loop only 75 samples are being processed per loop.
+  ! This resulted in the following changes:
+  ! 
+  ! + DATA_WIN_SECS changed from 4 to 3 in max30102_processing.h
+  ! + BUFFER_SIZE now 75 samples instead of 100
+  ! + MAX_NUM_PEAKS is calculated using (225*DATA_WIN_SECS)/60
+  ! + Applying a moving average filter in function get_num_peaks in file 
+  !   max30102_processing.cpp is done with a 'for' loop
+  ! + Removed global incrementor variables 'i' and 'j' and used local
+  !   varaibles 'r' and 's' in each 'for' loop in this file 
+  !   (ble_testbench_max30102)
+  ! 
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
+
 
 #include <Arduino.h>
 #include <TinyWireM.h>
 #include <USI_TWI_Master.h>
 #include <Wire.h>
-
-#include <Adafruit_MMA8451.h>
-#include <Adafruit_Sensor.h>
 
 #include "max30102_wire_driver.h"
 #include "max30102_processing.h"
@@ -36,15 +51,10 @@
 #include <SoftwareSerial.h>
 
 #define MAX30102_INTR 10 // The MAX30102 interrupt line will go to pin 10 on the Flora
-#define MMA8451_INTR 9
 
 #define PACKET_SIZE 40
 
 // ------------------------ GLOBAL VARIABLE DECLARATIONS ------------------------
-
-// MMA8451 variables
-Adafruit_MMA8451 mma = Adafruit_MMA8451();
-uint16_t xyz_buffer[3];
 
 // MAX30102 DATA COLLECTION
 uint32_t red_buffer[BUFFER_SIZE]; // red LED sensor data
@@ -70,7 +80,6 @@ uint16_t timer_tmp = 0;
 
 // Distress Flags
 bool hr_abnormal = 0, spo2_abnormal = 0;
-bool horizontal_long_flag = 0, orientation_change = 0;
 
 // BLE variables
 Adafruit_BluefruitLE_UART ble(Serial1, BLUEFRUIT_UART_MODE_PIN);
@@ -86,28 +95,17 @@ char *packet_ptr = update_packet;
   // SERIAL COMMUNICATION USED FOR DEBUGGING
   Serial.begin(115200);
   while(!Serial);
+  delay(500);
+  Serial.println("SERIAL COMMUNICATION INITIATED: 115200 BAUD");
+  
+  Serial.println("FLORA JOINED BUS AS MASTER");
 
-  // SETUP THE BLE BOARD
   if(!ble.begin()) {
     while(1) {
-     Serial.println("Couldn't find Bluefruit. Reset WAFR..."); 
+      Serial.println("Could not find Bluefruit");
+      Serial.println("Reset the WAFR device\n");
     }
-  }
-  if(!ble.factoryReset()) {
-    Serial.println("Could not reset the BLE board...");
-  }
-  ble.echo(false);
-  // Change the device name
-  if(!ble.sendCommandCheckOK(F("AT+GAPDEVNAME=WAFR"))) {
-    Serial.println("Could not set device name...");
-  }
-
-  // INITIALIZE THE MMA8451 ACCELEROMETER
-  mma.begin();
-  mma.setRange(MMA8451_RANGE_2_G);
-  mma.setDataRate(MMA8451_DATARATE_1_56_HZ);
-  // pinMode(MMA8451_INTR, INPUT); // This may or may not be used...
-  Serial.println("INITIALIZED MMA8451 ACCEL");
+  } else {Serial.println("Found Bluefruit");}
 
   // INITIALIZE the MAX30102 PULSE OXIMETER
   max30102_reset();
@@ -117,18 +115,16 @@ char *packet_ptr = update_packet;
   // Setup all max30102 registers
   max30102_init();
 
-  Serial.println("INITIALIZED MAX30102 PULSE OXIMETER");
-  Serial.println("STARTING FIRST BUFFER LOAD");
-
 //--------------------- MAX30102 FIRST BUFFER LOAD ------------------------
   // Put 5 num_peak samples in num_peaks_arr
-  for(uint32_t r = 0; r < INITIAL_SAMPLE_SIZE; r++) { // Collect 15s worth of peaks (heartbeats)
+  for(uint32_t r = 0; r < INITIAL_SAMPLE_SIZE; r++) { // Collect 20s worth of peaks (heartbeats)
     // Collect 75 samples
     for(uint32_t s = 0; s < BUFFER_SIZE; s++) {
       while(digitalRead(MAX30102_INTR)==1); // Wait until the interrupt pin asserts
       // Read from max30102 FIFO
-      // If there is nothing to read decrement the incrementor and try again.
-      if(!max30102_read_fifo(red_buffer, ir_buffer, s)) { s--; }
+      if(!max30102_read_fifo(red_buffer, ir_buffer, s)) {
+        s--; // If there is nothing to read decrement the incrementor and try again.
+      }
     }
     num_peaks_arr[r] = get_num_peaks(ir_buffer);
     spo2_ratio_arr[r] = get_spo2_ratio(red_buffer, ir_buffer);
@@ -141,9 +137,9 @@ char *packet_ptr = update_packet;
                       num_peaks_arr[3] + 
                       num_peaks_arr[4]) / 4; // First read is erroneous, so replace it                 
 
-//---------------------- CALCULATE HR AND SPO2 -------------------------
+//---------------------- CALCULATE HR AND SPO2 (FIRST TIME) -------------------------
   total_num_peaks = 0;
-  for(uint32_t r = 0; r < INITIAL_SAMPLE_SIZE; r++) { total_num_peaks += num_peaks_arr[r]; }
+  for(uint32_t r = 0; r < INITIAL_SAMPLE_SIZE; r++) {total_num_peaks += num_peaks_arr[r];}
 
   // CALCULATE HR
   heart_rate = PEAKS_TO_HR(total_num_peaks);
@@ -151,7 +147,7 @@ char *packet_ptr = update_packet;
       avg_hr = 0;
       for(uint32_t r = 0; r < INITIAL_SAMPLE_SIZE - 1; r++) { // Shift heart rate array left by one
         heart_rate_arr[r] = heart_rate_arr[r+1];
-        avg_hr += heart_rate_arr[r];
+        avg_hr += heart_rate_arr[r]; // pre-sum of avg_hr
       }
       heart_rate_arr[INITIAL_SAMPLE_SIZE - 1] = heart_rate; // Add new heart rate to heart rate array
       avg_hr = (avg_hr + heart_rate) / INITIAL_SAMPLE_SIZE; // Calculate average HR from heart rate array
@@ -184,68 +180,33 @@ char *packet_ptr = update_packet;
   avg_hr = heart_rate;
   avg_hr = spo2;
 
-  mma.read();
-  
-  Serial.println("FIRST BUFFER LOAD COMPLETE\n");
+  Serial.println("MAX30102 FIRST DATA LOAD COMPLETE\n");
  }
 
 char test_arr[5] = { 't','e', 's', 't', '\n' };
 
  void loop() {
-
-  // Get a new sample from the MMA8451
-  xyz_buffer[0] = mma.x;
-  xyz_buffer[1] = mma.y;
-  xyz_buffer[2] = mma.z;
-  mma.read();
-
+/*
 //--------------------- CHECK FOR CONDITIONS OF STRESS -------------------
-  // These values are for testing, actual will be <40 and >140
+  // These values are for testing, actual will be <40 and >165
   
   if( avg_hr < 70 || avg_hr > 80 ) { hr_abnormal = 1;} 
   else {hr_abnormal = 0;}
   if( avg_spo2 < 95 ) {spo2_abnormal = 1;}
   else {spo2_abnormal = 0; }
   
-
-  /*
-   * if( mma.z >= 7.5 m/s^2 || mma.z <= -7.5 m/s^2 ){
-   * 
-   *   if( abs(timer-timer_tmp) > 3 ) {
-   *     // Wait 15-20 seconds and see if still horizontal
-   *     // if so, then:
-   *     horizontal_long_flag = 1;
-   *     timer_tmp = timer;
-   *   } else {horizontal_long_flag = 0;}
-   *   
-   * } else {horizontal_long_flag = 0;}
-   * 
-   * //calculate difference in xyz from previous loop
-   * // mma.x - xyz_buffer[0], mma.y - xyz_buffer[1], mma.z - xyz_buffer[2]
-   * // determine what orientation changes need to go in if/else statement(s)
-   * 
-   * if( ) {
-   *   
-   * } else {
-   * 
-   */
 //------------------------------------------------------------------------
+*/
 
-/*
 //-------------------- DISPLAY DATA FOR DEBUGGING ------------------------
 
   Serial.print("HR: "); Serial.print(avg_hr);
   Serial.print(" -- SPO2: "); Serial.print(avg_spo2);
-  Serial.print(" -- X: "); Serial.print(mma.x);
-  Serial.print(" -- Y: "); Serial.print(mma.y);
-  Serial.print(" -- Z: "); Serial.print(mma.z);
   Serial.print(" -- HR_ABNORMAL: "); Serial.print(hr_abnormal);
   Serial.print(" -- SPO2_ABNORMAL: "); Serial.print(spo2_abnormal);
-//  Serial.print(" -- HZL_LONG_FLAG: "); Serial.print(horizontal_long_flag);
-//  Serial.print(" -- OR_CHANGE: "); Serial.print(orientation_change);
   Serial.println("\n--------------------------------------------------------");
+
 //------------------------------------------------------------------------
-*/
 
 //--------------------- Bluetooth Test -----------------------------------
   ble.print("AT+BLEUARTTX=");
@@ -276,7 +237,7 @@ char test_arr[5] = { 't','e', 's', 't', '\n' };
  *   
  *   // Protocol for a dropped packet???
  * }
- */
+*/
 //------------------------------------------------------------------------
 
 //----------------- GET A NEW SAMPLE FROM MAX30102 --------------------
@@ -297,16 +258,14 @@ char test_arr[5] = { 't','e', 's', 't', '\n' };
   spo2_ratio_arr[INITIAL_SAMPLE_SIZE - 1] = get_spo2_ratio(red_buffer, ir_buffer);
   
 //---------------------------------------------------------------------
-
-  
   
 //------------------- CALCULATE HR AND SPO2 ---------------------------
   total_num_peaks = 0;
-  for(uint32_t r = 0; r < INITIAL_SAMPLE_SIZE; r++) { total_num_peaks += num_peaks_arr[r]; }
+  for(uint32_t r = 0; r < INITIAL_SAMPLE_SIZE; r++) {total_num_peaks += num_peaks_arr[r];}
 
   // CALCULATE HR
   heart_rate = PEAKS_TO_HR(total_num_peaks);
-  if(heart_rate < 225 && heart_rate > 30) {
+  if(heart_rate < 225 && heart_rate > 30) {// && abs(heart_rate - avg_hr) < 30) {
       avg_hr = 0;
       for(uint32_t r = 0; r < INITIAL_SAMPLE_SIZE - 1; r++) { // Shift heart rate array left by one
         heart_rate_arr[r] = heart_rate_arr[r+1];

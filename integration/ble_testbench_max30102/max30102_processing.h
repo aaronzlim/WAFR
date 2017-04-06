@@ -18,7 +18,7 @@
 //       This gives an implemented sampling frequency of 25Hz
 #define BUFFER_SIZE ( FS * DATA_WIN_SECS ) // 75 samples (3s of data)
 #define MVG_AVG_SIZE 6 // six point moving average
-#define MAX_NUM_PEAKS ((225*DATA_WIN_SECS)/60) // For max discernable HR of 225bpm
+#define MAX_NUM_PEAKS ((225*DATA_WIN_SECS)/60) // Max number of heart beats possible in DATA_WIN_SECS of time (max hr of 220bpm)
 #define MIN_PEAK_WIDTH 7     // 8 = max discernable HR is 180 bpm
                              // 7 = max discernable HR is 210 bpm
                              // 6 = max discernable HR is 225 bpm
@@ -55,11 +55,6 @@ void remove_close_peaks(int32_t *tmp_ir, int32_t *ir_locs, uint32_t *num_peaks, 
 void sort_ascending(int32_t *arr, uint32_t len);
 
 void sort_descending(int32_t *arr, uint32_t len);
-
-
-
-
-
 
 
 #endif // max30102_processing_H
