@@ -14,7 +14,7 @@
  * 
  * Date: 5 April 2017
  * 
- * Version: 1.0.1 First Release
+ * Version: 1.0.1 BETA
  * 
  */
 
@@ -32,13 +32,19 @@
 #include "BluefruitConfig.h"
 #include <Adafruit_BLE.h>
 #include <Adafruit_BluefruitLE_UART.h>
+#include <inttypes.h>
 
 #include <SoftwareSerial.h>
 
 #define MAX30102_INTR 10 // The MAX30102 interrupt line will go to pin 10 on the Flora
-#define MMA8451_INTR 9
+//#define MMA8451_INTR 9 // The MMA8451 interrupt line will go to pin 9 on the Flora
 
-#define PACKET_SIZE 40
+#define ABN_HR_UPPER     90 // just for testing, actual value will be like 145 or something
+#define ABN_HR_LOWER     70 // just for testing, actual value will be like 40 or something
+#define ABN_SPO2_LOWER   95 // below this value spo2 is considered abnormal
+#define ABN_LOOPS_THRESH 5  // Number of loops a value can be abnormal before it triggers a transmission
+
+#define PACKET_SIZE 60 // Size of char array (string of data) to send over Bluetooth
 
 // ------------------------ GLOBAL VARIABLE DECLARATIONS ------------------------
 
@@ -66,16 +72,14 @@ int32_t spo2; // SPO2 value
 bool spo2_valid; // indicator to show if the SPO2 calculation is valid
 
 uint16_t timer = 0;
-uint16_t timer_tmp = 0;
 
 // Distress Flags
-bool hr_abnormal = 0, spo2_abnormal = 0;
-bool horizontal_long_flag = 0, orientation_change = 0;
+int hr_abnormal = 0, spo2_abnormal = 0;
+int horizontal = 0, orientation_change = 0;
 
 // BLE variables
 Adafruit_BluefruitLE_UART ble(Serial1, BLUEFRUIT_UART_MODE_PIN);
 char update_packet[PACKET_SIZE + 1];
-char *packet_ptr = update_packet;
 
 //---------------------------------------------------------------------------------
 
@@ -88,26 +92,20 @@ char *packet_ptr = update_packet;
   while(!Serial);
 
   // SETUP THE BLE BOARD
-  if(!ble.begin()) {
-    while(1) {
-     Serial.println("Couldn't find Bluefruit. Reset WAFR..."); 
-    }
+  if(!ble.begin(VERBOSE_MODE)) {
+    Serial.println("Couldn't find Bluefruit. Reset WAFR...");
+    while(1);
   }
-  if(!ble.factoryReset()) {
-    Serial.println("Could not reset the BLE board...");
-  }
+  ble.factoryReset();
   ble.echo(false);
   // Change the device name
-  if(!ble.sendCommandCheckOK(F("AT+GAPDEVNAME=WAFR"))) {
-    Serial.println("Could not set device name...");
-  }
+  ble.sendCommandCheckOK(F("AT+GAPDEVNAME=WAFR"));
 
   // INITIALIZE THE MMA8451 ACCELEROMETER
   mma.begin();
   mma.setRange(MMA8451_RANGE_2_G);
   mma.setDataRate(MMA8451_DATARATE_1_56_HZ);
   // pinMode(MMA8451_INTR, INPUT); // This may or may not be used...
-  Serial.println("INITIALIZED MMA8451 ACCEL");
 
   // INITIALIZE the MAX30102 PULSE OXIMETER
   max30102_reset();
@@ -117,9 +115,7 @@ char *packet_ptr = update_packet;
   // Setup all max30102 registers
   max30102_init();
 
-  Serial.println("INITIALIZED MAX30102 PULSE OXIMETER");
-  Serial.println("STARTING FIRST BUFFER LOAD");
-
+Serial.println("LOADING");
 //--------------------- MAX30102 FIRST BUFFER LOAD ------------------------
   // Put 5 num_peak samples in num_peaks_arr
   for(uint32_t r = 0; r < INITIAL_SAMPLE_SIZE; r++) { // Collect 15s worth of peaks (heartbeats)
@@ -136,10 +132,7 @@ char *packet_ptr = update_packet;
   }
 //-------------------------------------------------------------------------
 
-  num_peaks_arr[0] = (num_peaks_arr[1] + 
-                      num_peaks_arr[2] + 
-                      num_peaks_arr[3] + 
-                      num_peaks_arr[4]) / 4; // First read is erroneous, so replace it                 
+  num_peaks_arr[0] = num_peaks_arr[4]; // First read is always erroneous, so replace it                 
 
 //---------------------- CALCULATE HR AND SPO2 -------------------------
   total_num_peaks = 0;
@@ -186,10 +179,8 @@ char *packet_ptr = update_packet;
 
   mma.read();
   
-  Serial.println("FIRST BUFFER LOAD COMPLETE\n");
+  Serial.println("COMPLETE\n");
  }
-
-char test_arr[5] = { 't','e', 's', 't', '\n' };
 
  void loop() {
 
@@ -200,83 +191,67 @@ char test_arr[5] = { 't','e', 's', 't', '\n' };
   mma.read();
 
 //--------------------- CHECK FOR CONDITIONS OF STRESS -------------------
-  // These values are for testing, actual will be <40 and >140
-  
-  if( avg_hr < 70 || avg_hr > 80 ) { hr_abnormal = 1;} 
-  else {hr_abnormal = 0;}
-  if( avg_spo2 < 95 ) {spo2_abnormal = 1;}
-  else {spo2_abnormal = 0; }
-  
 
-  /*
-   * if( mma.z >= 7.5 m/s^2 || mma.z <= -7.5 m/s^2 ){
-   * 
-   *   if( abs(timer-timer_tmp) > 3 ) {
-   *     // Wait 15-20 seconds and see if still horizontal
-   *     // if so, then:
-   *     horizontal_long_flag = 1;
-   *     timer_tmp = timer;
-   *   } else {horizontal_long_flag = 0;}
-   *   
-   * } else {horizontal_long_flag = 0;}
-   * 
-   * //calculate difference in xyz from previous loop
-   * // mma.x - xyz_buffer[0], mma.y - xyz_buffer[1], mma.z - xyz_buffer[2]
-   * // determine what orientation changes need to go in if/else statement(s)
-   * 
-   * if( ) {
-   *   
-   * } else {
-   * 
-   */
+  // !!! THESE VARIABLES DO NOT GET RESET TO 0 !!!
+  // MAKE SURE THIS IS OKAY...
+
+  // Check if HR is too high or too low
+  if( avg_hr < ABN_HR_LOWER || avg_hr > ABN_HR_UPPER ) { hr_abnormal++;} 
+  else {hr_abnormal = 0;}
+  
+  // Check if spo2 is too low
+  if( avg_spo2 < ABN_SPO2_LOWER ) {spo2_abnormal++;}
+  else {spo2_abnormal = 0; }
+
+  // Check if horizontal
+  if(abs(mma.z) > 3200 || abs(mma.y) > 3200) {horizontal++;}
+  else {horizontal = 0;}
+  
+  // Check if sudden orientation change
+  // STILL NEED TO FIGURE THIS OUT
+
 //------------------------------------------------------------------------
 
-/*
 //-------------------- DISPLAY DATA FOR DEBUGGING ------------------------
 
-  Serial.print("HR: "); Serial.print(avg_hr);
-  Serial.print(" -- SPO2: "); Serial.print(avg_spo2);
-  Serial.print(" -- X: "); Serial.print(mma.x);
-  Serial.print(" -- Y: "); Serial.print(mma.y);
-  Serial.print(" -- Z: "); Serial.print(mma.z);
-  Serial.print(" -- HR_ABNORMAL: "); Serial.print(hr_abnormal);
-  Serial.print(" -- SPO2_ABNORMAL: "); Serial.print(spo2_abnormal);
-//  Serial.print(" -- HZL_LONG_FLAG: "); Serial.print(horizontal_long_flag);
-//  Serial.print(" -- OR_CHANGE: "); Serial.print(orientation_change);
-  Serial.println("\n--------------------------------------------------------");
-//------------------------------------------------------------------------
-*/
+// NOTE:
+// Do not uncomment all of these Serial.print lines at once!
+// You will run out of RAM and the code will not function properly.
 
-//--------------------- Bluetooth Test -----------------------------------
-  ble.print("AT+BLEUARTTX=");
-  ble.println(test_arr);
+//  Serial.print("HR: "); Serial.print(avg_hr);
+//  Serial.print(" -- SPO2: "); Serial.print(avg_spo2);
+//  Serial.print(" -- X: "); Serial.print(mma.x);
+//  Serial.print(" -- Y: "); Serial.print(mma.y);
+//  Serial.print(" -- Z: "); Serial.println(mma.z);
+//  Serial.print(" -- HR_ABNORMAL: "); Serial.print(hr_abnormal);
+//  Serial.print(" -- SPO2_ABNORMAL: "); Serial.print(spo2_abnormal);
+//  Serial.print(" -- HZL: "); Serial.print(horizontal);
+//  Serial.print(" -- OR_CHANGE: "); Serial.print(orientation_change);
+
 //------------------------------------------------------------------------
 
 //---------------------- DECIDE TO TRANSMIT DATA -------------------------
-/*
- * if( hr_abnormal || spo2_abnormal || horizontal_long_flag || orientation_change || timer > 5 ) {
- *   timer = 0;
- *   // Assemble packet  
- *   *( (uint32_t*) packet_ptr ) = avg_hr;
- *   *( (uint32_t*) &packet_ptr[4] ) = avg_spo2;
- *   *( (uint32_t*) &packet_ptr[8] ) = xyz_buffer[0];
- *   *( (uint32_t*) &packet_ptr[12] ) = xyz_buffer[1];
- *   *( (uint32_t*) &packet_ptr[16] ) = xyz_buffer[2];
- *   *( (uint32_t*) &packet_ptr[20] ) = mma.x;
- *   *( (uint32_t*) &packet_ptr[24] ) = mma.y;
- *   *( (uint32_t*) &packet_ptr[28] ) = mma.z;
- *   *( (bool*) &packet_ptr[32] ) = hr_abnormal;
- *   *( (bool*) &packet_ptr[33] ) = spo2_abnormal;
- *   *( (bool*) &packet_ptr[34] ) = horizontal_long_flag;
- *   *( (bool*) &packet_ptr[35] ) = orientation_change;
- *   
- *   // Send to the BLE board
- *   ble.print("AT+BLEUARTTX=");
- *   ble.println(update_packet);
- *   
- *   // Protocol for a dropped packet???
- * }
- */
+
+  if(hr_abnormal >= ABN_LOOPS_THRESH || 
+     spo2_abnormal >= ABN_LOOPS_THRESH  || 
+     horizontal >= ABN_LOOPS_THRESH || 
+     orientation_change || 
+     timer >= 5) {
+
+    // Create data packet
+    sprintf(update_packet, "%" PRIu32 ",%" PRIu32 ",%" PRId16 ",%" PRId16 ",%" PRId16 ",%" PRId16 ",%" PRId16
+                          ",%" PRId16 ",%d ,%d ,%d ,%d", avg_hr, avg_spo2, 
+                          xyz_buffer[0], xyz_buffer[1], xyz_buffer[2], mma.x, mma.y, mma.z, 
+                          hr_abnormal, spo2_abnormal, horizontal, orientation_change);
+    
+    // Send data packet to the BLE board for transmission
+    ble.print("AT+BLEUARTTX=");
+    ble.println(update_packet);
+    
+    timer = 0;
+    
+  }
+
 //------------------------------------------------------------------------
 
 //----------------- GET A NEW SAMPLE FROM MAX30102 --------------------
@@ -297,8 +272,6 @@ char test_arr[5] = { 't','e', 's', 't', '\n' };
   spo2_ratio_arr[INITIAL_SAMPLE_SIZE - 1] = get_spo2_ratio(red_buffer, ir_buffer);
   
 //---------------------------------------------------------------------
-
-  
   
 //------------------- CALCULATE HR AND SPO2 ---------------------------
   total_num_peaks = 0;
@@ -334,6 +307,6 @@ char test_arr[5] = { 't','e', 's', 't', '\n' };
   }
   else {spo2_valid = 0;}
 //---------------------------------------------------------------------
-
+  timer++;
  }
 

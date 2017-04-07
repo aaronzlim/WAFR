@@ -2,7 +2,7 @@
 * Author: Aaron Lim
 * Project: WAFR
 * File Name: maxrefdes117_testbench.ino
-* Release: 2 February, 2017 V1.00 Initial Release
+* Release: 2 February, 2017 V1.00 BETA
 *
 * This is test code used to help interface the Maxrefdes117 pulse oximetry sensor with
 * the Adafruit Flora using the Wire library.

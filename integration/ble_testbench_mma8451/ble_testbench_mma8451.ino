@@ -14,7 +14,7 @@
  * 
  * Date: 30 March 2017
  * 
- * Version: 1.0.0 First Release
+ * Version: 1.0.0 BETA
  * 
  */
 

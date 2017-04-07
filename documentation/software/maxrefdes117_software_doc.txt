@@ -36,6 +36,7 @@ max30102_wire_driver.h and max30102_wire_driver.cpp
 ---------------------------------------------------
 These files are used to define all of the important registers and functions needed to interface with the MAX30102 heart rate and spo2 sensor over I2C using the Wire library. These files were adapted from the MAX30102 driver software provided by Maxim Integrated.
 
+
 + Dependencies: 
 
 	Arduino.h
@@ -74,7 +75,7 @@ These files are used to define all of the important registers and functions need
 
 max30102_read_reg(byte reg)
 
-	Return Type: byte
+	Return Type: byte - data held in register <reg>
 
 	Arguments: reg - byte - The address of the register to read
 
@@ -93,42 +94,125 @@ max30102_write_reg(uint8_t addr, uint8_t data)
 
 max30102_set_reg_ptr(uint8_t addr)
 
-	Return Type:
+	Return Type: NONE
 
-	Arguments:
+	Arguments: addr - uint8_t - address to point to
 
-	Description:
+	Description: Sets the MAX30102 register pointer to a specified register
 
 
 max30102_read_fifo(uint32_t *read_buffer, uint32_t *ir_buffer, uint8_t idx)
 
-	Return Type:
+	Return Type: bool - whether the read was successful or not
 
-	Arguments:
+	Arguments: red_buffer - uint32_t* - array to hold red LED data
+			   ir_buffer - uint32_t* - array to hold IR LED data
+			   idx - uint8_t - index at which data is placed in red_buffer and ir_buffer
 
-	Description:
+	Description: Data is read from the FIFO buffer and placed in the red_buffer and ir_buffer arrays. Each sample is six (6) bytes, three for red and three for ir.
 
 
 max30102_init(void)
 
-	Return Type:
+	Return Type: NONE
 
-	Arguments:
+	Arguments: NONE
 
-	Description:
+	Description: Initializes important registers to define the operating characteristics of the MAX30102 sensor
 
 
 max30102_clear_interrupt_status_regs(void)
 
-	Return Type:
+	Return Type: NONE
 
-	Arguments:
+	Arguments: NONE
 
-	Description:
+	Description: Performs a read of the interrupt status registers, which also clears them
 
 
 max30102_reset(void)
 
+	Return Type: NONE
+
+	Arguments: NONE
+
+	Description: Resets the MAX30102 sensor by writing 0x40 to the mode config register
+
+
+max30102_processing.h and max30102_processing.cpp
+-------------------------------------------------
+These files are used to process the data gathered from the MAX30102 in order to calculate heart rate and spo2.
+
+
++ Dependencies:
+
+	Arduino.h
+
+
++ Definitions:
+
+	FS - Sampling Frequency
+	DATA_WIN_SECS - window of data gathered at one time, in units of seconds
+	BUFFER_SIZE - number of samples to process at once
+	MVG_AVG_SIZE - size of the moving average filter
+	MAX_NUM_PEAKS - maximum allowed peaks in a data window to resolve a HR of 225bpm
+	MIN_PEAK_WIDTH - minimum distance between peaks to distinguish heart beats from noise
+	INITIAL_SAMPLE_SIZE - number of loops to initially fill the hr and spo2 buffers
+	PEAKS_TO_HR(peaks) - converts the number of peaks counted to a heart rate
+
+
++ Constants
+
+	tmp_ir[ BUFFER_SIZE ] - array to process IR LED data without affecting the original set
+	tmp_red[ BUFFER_SIZE ] - array to process red LED data without affecting the original set
+
+
++ Functions:
+
+get_num_peaks(uint32_t *ir_buffer)
+
+	Return Type: uint32_t - number of peaks in ir_buffer array
+
+	Arguments: ir_buffer - uint32_t* - array of IR LED samples
+
+	Description: Counts the number of peaks in one sample set of IR LED data.
+
+
+
+get_spo2_ratio(uint32_t *red_buffer, uint32_t *ir_buffer)
+
+	Return Type: float - ratio of (red_ac/red_dc)/(ir_ac/ir_dc) for spo2 calculation
+
+	Arguments: red_buffer - uint32_t* - array of red LED data
+			   ir_buffer - uint32_t* - array of IR LED data
+
+	Description: Calculates the ratio of ratios of the red and IR data. This value will be used to calculate the spo2 based on a calibrated curve that should be obtained from medical test equipment.
+
+
+peaks_above_min_height(int32_t *ir_locs, uint32_t *num_peaks, int32_t *tmp_ir, uint32_t threshold, uint32_t max_num_peaks)
+
+	Return Type: NONE
+
+	Arguments: ir_locs - array to hold locations (indices) of peaks above a threshold
+			   num_peaks - number of peaks found in function get_num_peaks(...)
+			   tmp_ir - sample set of pre-processed (smoothed) IR data
+			   threshold - amplitude threshold for peaks
+			   max_num_peaks - maximum allowed number of peaks
+
+	Description: Locates all peaks above a threshold in the processed (smoothed) IR data array, and places their indices in the ir_locs array
+
+
+remove_close_peaks(int32_t *tmp_ir, int32_t *ir_locs, uint32_t *num_peaks, uint32_t min_width)
+
+	Return Type: 
+
+	Arguments:
+
+	Description:
+
+
+sort_ascending(int32_t *arr, uint32_t len)
+
 	Return Type:
 
 	Arguments:
@@ -136,7 +220,13 @@ max30102_reset(void)
 	Description:
 
 
-max30102_processing.h and max30102_processing.cpp
--------------------------------------------------
+sort_descending(int32_t *arr, uint32_t len)
+
+	Return Type:
+
+	Arguments:
+
+	Description:
 
 
+EOF

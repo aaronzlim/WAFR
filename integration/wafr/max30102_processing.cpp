@@ -1,7 +1,7 @@
 /*
  * Author: Aaron Lim
  * Project: WAFR
- * Filename: max30102_smoothing.cpp
+ * Filename: max30102_processing.cpp
  * Description: Data smoothing algorithm for the max30102 pulse oximetry sensor
  * 
  * Revision History:
