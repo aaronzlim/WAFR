@@ -2,11 +2,10 @@
  * Author: Aaron Lim
  * Project: WAFR
  * Filename: max30102_processing.cpp
- * Description: Data smoothing algorithm for the max30102 pulse oximetry sensor
+ * Description: Data processing algorithm for the max30102 pulse oximetry sensor
  * 
  * Revision History:
- * 2-14-17 Rev 1.00 Initial Release
- * 
+ * 2-14-17 Rev 1.0.0 BETA
  */
 
 #include <Arduino.h>
@@ -14,6 +13,9 @@
 #include <SoftwareSerial.h>
 
 uint32_t get_num_peaks(uint32_t *ir_buffer) {
+  /*
+   * Counts the number of peaks in the IR LED data
+   */
   
   uint32_t ir_mean; // Holds DC mean of data
   uint32_t threshold = 0; // Minimum height of a peak
@@ -40,7 +42,8 @@ uint32_t get_num_peaks(uint32_t *ir_buffer) {
   threshold = 0;
   for ( j=0 ; j<BUFFER_SIZE ;j++){threshold += tmp_ir[j];}
   threshold = (threshold / BUFFER_SIZE);
-/*
+
+/* DEBUG
   for(j= 0; j < 100; j++) {
     Serial.print(tmp_ir[j]);
     Serial.print(",");
@@ -55,6 +58,9 @@ uint32_t get_num_peaks(uint32_t *ir_buffer) {
 }
 
 float get_spo2_ratio(uint32_t *red_buffer, uint32_t *ir_buffer) {
+  /*
+   * Calculate the ratio of ratios of red and IR data used to calculate spo2
+   */
 
   uint16_t j; // Used for incrementing
 
@@ -101,7 +107,6 @@ float get_spo2_ratio(uint32_t *red_buffer, uint32_t *ir_buffer) {
 void peaks_above_min_height(int32_t *ir_locs, uint32_t *num_peaks, int32_t *tmp_ir, uint32_t threshold, uint32_t max_num_peaks) {
   /*
    * Find all peaks above threshold
-   * 
    */
 
   uint32_t width = 0;
@@ -133,7 +138,6 @@ void peaks_above_min_height(int32_t *ir_locs, uint32_t *num_peaks, int32_t *tmp_
 void remove_close_peaks(int32_t *tmp_ir, int32_t *ir_locs, uint32_t *num_peaks, uint32_t min_width) {
   /*
    * Remove peaks seperated by less than min_width
-   * 
    */
   int16_t i, j, distance;
 
@@ -172,6 +176,9 @@ void remove_close_peaks(int32_t *tmp_ir, int32_t *ir_locs, uint32_t *num_peaks, 
 }
 
 void sort_ascending(int32_t *arr, uint32_t len) {
+  /* 
+   * Sorts an array in ascending order
+   */
   int i, j, tmp;
   for (i = 1; i < len; i++) {
     j = i;
@@ -186,9 +193,7 @@ void sort_ascending(int32_t *arr, uint32_t len) {
 
 void sort_descending(int32_t *arr, uint32_t len) {
     /*
-     * arr - an array holding values
-     * key - an array holding indexes for the values in arr
-     * 
+     * Sorts an array in descending order
      */
     
     uint16_t i, j, temp;

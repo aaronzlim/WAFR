@@ -2,10 +2,10 @@
  * Author: Aaron Lim
  * Project: WAFR
  * Filename: max30102_processing.h
- * Description: Data smoothing algorithm for the max30102 pulse oximetry sensor
+ * Description: Data processing algorithm for the max30102 pulse oximetry sensor
  * 
  * Revision History:
- * 2-14-17 Rev 1.00 Initial Release
+ * 2-14-17 Rev 1.00 BETA
  * 
  */
 
@@ -55,11 +55,6 @@ void remove_close_peaks(int32_t *tmp_ir, int32_t *ir_locs, uint32_t *num_peaks, 
 void sort_ascending(int32_t *arr, uint32_t len);
 
 void sort_descending(int32_t *arr, uint32_t len);
-
-
-
-
-
 
 
 #endif // max30102_processing_H

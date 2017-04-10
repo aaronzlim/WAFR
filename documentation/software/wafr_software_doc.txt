@@ -1,0 +1,132 @@
+Author: Aaron Lim
+
+File: wafr_software_doc.txt
+
+Project: WAFR - Wearable Alert for First Responders
+		 Senior Design Project
+
+Organization: University of Rochester
+			  Dept. of Electrical & Computer Engineering
+
+Description: This software controls the process flow of the WAFR system
+
+Revision: 9 April 2017 V1.00 BETA
+
+
+TABLE OF CONTENTS
+-----------------
+Introduction
+
+wafr.ino
+
+
+Introduction
+------------
+The software described in this document is used to control the Adafruit Flora microcontroller board in order to collect data from the maxrefdes117 pulse oximetry sensor and the mma8451 triple axis accelerometer, as well as transmit that data to a third party user over Bluetooth LE via the Adafruit Bluefruit LE module. The Adafruit Flora board uses the Atmega32u4 microcontroller. Other Arduino compatible board can be used in place of the Flora, but one must keep track of memory constraints. All communication with external sensors is done over an I2C bus using the Wire library.Another I2C library may be used, but that requires you rewrite the max30102_wire_driver software to reflect the change in I2C software.
+
+
+wafr.ino
+--------
+
++ Dependencies:
+
+	Arduino.h
+	TinyWireM.h
+	USI_TWI_Master.h
+	Wire.h
+	Adafruit_MMA8451.h
+	Adafruit_Sensor.h
+	max30102_wire_driver.h
+	max30102_processing.h
+	BluefruitConfig.h
+	Adafruit_BLE.h
+	Adafruit_BluefruitLE_UART.h
+	inttypes.h
+
+
++ Definitions:
+	MAX30102_INTR - pin on the Flora board that will connect to the maxrefdes117 interrupt pin
+	ABN_HR_UPPER - highest heart rate considered normal
+	ABN_HR_LOWER - lowest heart rate considered normal
+	ABN_SPO2_LOWER - lowest spo2 considered normal
+	ABN_LOOPS_THRESH - number of loops a value can be abnormal before it triggers a transmission
+	PACKET_SIZE - size of the data packet sent via Bluetooth LE when distress is detected
+	
+
++ Global Variables:
+	
+	
+
++ Workflow
+ -- For more information see wafr_flowchart.png --
+	
+Setup phase:
+	- The microcontroller joins the bus as the master
+
+	- Initialize the Bluetooth LE module
+		- Perform a factory reset
+		- Turn off echo
+		- Change BLE discover name to WAFR
+
+	- Initialize the MMA8451
+		- Set range to 2g
+		- Set sampling rate to 1.56Hz
+
+	- Initialize the MAX30102
+		- Perform a reset
+		- Set a Flora pin as an input for the interrupt
+		- Clear interrupt status registers
+		- Setup all configuration registers
+
+	- Retrieve data from MAX30102 in order to fill the num_peak array
+	- First read is always erroneous, so replace it
+	- Calculate HR and SPO2 using first data load
+	- Fill HR and SPO2 buffers with first calculation
+	- Set avg_hr to heart_rate and avg_spo2 to spo2
+
+	- Perform a read from the MMA8451
+
+	- Set a timer (incrementor) to zero
+
+Loop Phase:
+	- Store current MMA8451 XYZ coordinates
+	- Read new XYZ values from the MMA8451
+	- Check for conditions of stress and increment appropriate flags
+		- Is HR too high?
+		- Is HR too low?
+		- Is SPO2 too low?
+		- Is the user horizontal?
+	
+	- Decide whether or not to transmit data over Bluetooth
+		- If any of the flags have been set for a predetermined amount of time, transmit
+		- If the timer is larger than a certain value, transmit
+		- Else, do not transmit
+
+	- If transmission occurs
+		- Fill the update packet with all data (HR, SPO2, X, Y, Z, Abnormal Flags)
+		- Send the update packet to the Bluetooth LE module
+
+	- Get a new sample set from the MAX30102 (on the MAXREFDES117 board)
+		- Fill red_buffer and ir_buffer arrays with samples
+		- If the read fails, decrement the loop incrementor and try again
+		- Shift num_peaks_arr array and spo2_ratio_arr array left by one (1)
+		- Add a new new sample to the num_peaks_arr array and spo2_ratio_arr array
+	
+	- Calculate a new heart rate
+		- Take average of num_peaks_arr array
+		- Use average number of peaks to calculate a heart rate
+			- Uses formula PEAKS_TO_HR() defined in max30102_processing.h
+		- If heart rate is higher than 225 or lower than 30 discard the result
+		- If heart rate is valid shift heart_rate_arr array left by one
+		- Put new heart rate sample in heart_rate_arr array
+		- Update avg_hr (average heart rate) with average of heart_rate_arr
+
+	- Calculate a new SPO2 value
+		- Calculate the average ratio from spo2_ratio_arr array
+		- Calculate SPO2 using the average ratio
+		- If SPO2 is higher than 100 or lower than 80 discard it
+		- If SPO2 is valid, shift spo2_arr array left by one
+		- Put new SPO2 value in spo2_arr array
+		- Update avg_spo2 (average spo2) using spo2_arr
+
+	- Increment timer variable

@@ -2,7 +2,7 @@
 * Author: Aaron Lim
 * Project: WAFR
 * File Name: max30102_wire_driver.cpp
-* Release 14 February, 2017 V1.00 Initial Release
+* Release: 2-14-2017 V1.0.0 BETA
 * 
 * This code is used to drive the max30102 pulse oximetry sensor using
 * the Wire library for the Arduino platform.
@@ -72,7 +72,12 @@ void max30102_set_reg_ptr(uint8_t addr) {
 }
 
 bool max30102_read_fifo(uint32_t *red_buffer, uint32_t *ir_buffer, uint8_t idx) {
-
+/* Inputs: uint32_t* red_buffer - array of red LED data
+ *		   uint32_t* ir_buffer - array of IR LED data
+ *		   uint8_t idx - index of red_buffer and ir_buffer to place the FIFO buffer sample
+ *
+ *
+ */
   uint32_t temp[6]; // Array to hold red and ir samples (each 3 bytes)
   uint32_t red_sample = 0; // Holds the whole sample (18 bits)
   uint32_t ir_sample = 0;
@@ -118,16 +123,6 @@ bool max30102_read_fifo(uint32_t *red_buffer, uint32_t *ir_buffer, uint8_t idx) 
     red_buffer[idx] = red_sample;
     ir_buffer[idx] = ir_sample;
   }
-
-  // DEBUG
-  //Serial.print("READ PTR: ");
-  //Serial.println(fifo_read_ptr);
-  //Serial.print("WRITE PTR: ");
-  //Serial.println(fifo_write_ptr);
-  //Serial.print("IR: ");
-  //Serial.println(ir_sample);
-  //Serial.println("----------------");
-  // DEBUG
 
   return true;
 }
@@ -195,6 +190,12 @@ void max30102_clear_interrupt_status_regs(void) {
 }
 
 void max30102_reset(void) {
+/* Inputs: None
+ *
+ * Returns: None
+ *
+ * Function: Resets the max30102 optical sensor
+ */
   Wire.beginTransmission(I2C_MAX30102_ADDR); // Get attention of max30102
   Wire.write(REG_MODE_CONFIG); // Set register pointer to 0x09
   Wire.write(0x40); // Reset max30102 by setting bit 6 and clearing all others

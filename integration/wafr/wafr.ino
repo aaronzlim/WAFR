@@ -192,9 +192,6 @@ Serial.println("LOADING");
 
 //--------------------- CHECK FOR CONDITIONS OF STRESS -------------------
 
-  // !!! THESE VARIABLES DO NOT GET RESET TO 0 !!!
-  // MAKE SURE THIS IS OKAY...
-
   // Check if HR is too high or too low
   if( avg_hr < ABN_HR_LOWER || avg_hr > ABN_HR_UPPER ) { hr_abnormal++;} 
   else {hr_abnormal = 0;}
@@ -256,7 +253,7 @@ Serial.println("LOADING");
 
 //----------------- GET A NEW SAMPLE FROM MAX30102 --------------------
 
-  // Collect 100 new samples (4 seconds)
+  // Collect 75 new samples (3 seconds)
   for(uint32_t r = 0; r < BUFFER_SIZE; r++) {
     while(digitalRead(MAX30102_INTR) == 1); // Wait until the interrupt pin asserts
     if(!max30102_read_fifo(red_buffer, ir_buffer, r)) {

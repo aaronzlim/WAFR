@@ -5,8 +5,7 @@
  * Description: Adapting the original max30102 driver for the Wire library
  * 
  * Revision History:
- * 2-7-17 Rev 1.00 Initial Release
- * 
+ * 2-7-17 Rev 1.00 BETA
  */
 
 #ifndef max30102_wire_driver_H

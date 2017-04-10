@@ -11,7 +11,7 @@ Organization: University of Rochester
 Description: Documentation for the software that drives the
 			 MAXREFDES117 pulse oximeter breakout board
 
-Date: 4 April 2017
+Revision: 4 April 2017 V1.00 BETA
 
 
 TABLE OF CONTENTS
@@ -204,29 +204,34 @@ peaks_above_min_height(int32_t *ir_locs, uint32_t *num_peaks, int32_t *tmp_ir, u
 
 remove_close_peaks(int32_t *tmp_ir, int32_t *ir_locs, uint32_t *num_peaks, uint32_t min_width)
 
-	Return Type: 
+	Return Type: NONE 
 
-	Arguments:
+	Arguments: tmp_ir - int32_t* - preprocessed IR LED data
+			   ir_locs - int32_t* - indices of peak locations in tmp_ir array
+			   num_peaks - uint32_t* - pointer to the num_peaks global variable
+			   min_width - uint32_t - minimum number of samples between peaks (sets max HR)
 
-	Description:
+	Description: Removes peaks seperated by less than <min_width> and updates <num_peaks>
 
 
 sort_ascending(int32_t *arr, uint32_t len)
 
-	Return Type:
+	Return Type: NONE
 
-	Arguments:
+	Arguments: arr - int32_t* - the array to be sorted
+			   len - uint32_t - length of array <arr>
 
-	Description:
+	Description: Sorts an array in ascending order
 
 
 sort_descending(int32_t *arr, uint32_t len)
 
-	Return Type:
+	Return Type: NONE
 
-	Arguments:
+	Arguments: arr - int32_t* - array to sort
+			   len - uint32_t - length of array <arr>
 
-	Description:
+	Description: Sorts an array in descending order
 
 
 EOF
