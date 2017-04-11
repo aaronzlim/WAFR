@@ -8,7 +8,7 @@ Project: WAFR - Wearable Alert for First Responders
 Organization: University of Rochester
 			  Dept. of Electrical & Computer Engineering
 
-Description: This software controls the process flow of the WAFR system
+Description: This document describes the software that controls the process flow of the WAFR system
 
 Revision: 9 April 2017 V1.00 BETA
 
@@ -54,12 +54,39 @@ wafr.ino
 	
 
 + Global Variables:
-	mma - Adafruit_MMA8451 - 
-	xyz_buffer[3] - uint16_t - array to hold previous XYZ coordinates from MMA8451
-	
+	mma - Adafruit_MMA8451 - object for MMA8451, holds XYZ coordinates
+	xyz_buffer[] - uint16_t - array to hold previous XYZ coordinates from MMA8451
 
-+ Workflow
- -- For more information see wafr_flowchart.png --
+	red_buffer[] - uint32_t - array to hold red LED sensor data
+	ir_buffer[] - uint32_t - array to hold IR LED sensor data
+	num_peaks_arr[] - uint32_t - holds past iterations of number of peaks counted
+	heart_rate_arr[] - uint32_t - holds past heart rates
+	total_num_peaks - uint32_t - sum of num_peaks_arr array
+	heart_rate - int32_t - instantaneous heart rate
+	avg_hr - int32_t - average heart rate
+	hr_valid - bool - 1 if heart rate is valid, 0 otherwise
+	
+	spo2_ratio_arr[] - uint32_t - holds past spo2 ratio calculation results
+	spo2_arr[] - uint32_t - holds past spo2 calculation results
+	avg_ratio - float - average ratio
+	avg_spo2 - uint32_t - average spo2
+	spo2 - int32_t - instantaneous spo2
+	spo2_valid - bool - 1 if spo2 is valid, 0 otherwise
+
+	timer - uint32_t - used to count the number of loops
+	
+	hr_abnormal - int - counts the number of loops heart rate is abnormal
+	spo2_abnormal - int - counts the number of loops spo2 is abnormal
+	horizontal - int - counts the number of loops the accelerometer reads horizontal
+	orientation_change - int - is set when a major orientation change occurs, 0 otherwise
+
+	ble - Adafruit_BluefruitLE_UART - object for the Bluetooth LE module
+	update_packet[] - char - holds data to send to the BLE module
+
+
++ Workflow 
+
+-- For more information see wafr_flowchart.png --
 	
 Setup phase:
 	- The microcontroller joins the bus as the master
@@ -106,6 +133,7 @@ Loop Phase:
 	- If transmission occurs
 		- Fill the update packet with all data (HR, SPO2, X, Y, Z, Abnormal Flags)
 		- Send the update packet to the Bluetooth LE module
+		- Reset timer
 
 	- Get a new sample set from the MAX30102 (on the MAXREFDES117 board)
 		- Fill red_buffer and ir_buffer arrays with samples

@@ -71,7 +71,7 @@ uint32_t avg_spo2 = 0;
 int32_t spo2; // SPO2 value
 bool spo2_valid; // indicator to show if the SPO2 calculation is valid
 
-uint16_t timer = 0;
+uint32_t timer = 0;
 
 // Distress Flags
 int hr_abnormal = 0, spo2_abnormal = 0;
