@@ -54,7 +54,8 @@ wafr.ino
 	
 
 + Global Variables:
-	
+	mma - Adafruit_MMA8451 - 
+	xyz_buffer[3] - uint16_t - array to hold previous XYZ coordinates from MMA8451
 	
 
 + Workflow
