@@ -86,7 +86,7 @@ wafr.ino
 
 + Workflow 
 
--- For more information see wafr_flowchart.png --
+-- For more information see the wafr_flowcharts directory --
 	
 Setup phase:
 	- The microcontroller joins the bus as the master
