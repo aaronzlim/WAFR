@@ -34,7 +34,7 @@
 #include <Adafruit_BluefruitLE_UART.h>
 #include <inttypes.h>
 
-#include <SoftwareSerial.h>
+// #include <SoftwareSerial.h>
 
 #define MAX30102_INTR 10 // The MAX30102 interrupt line will go to pin 10 on the Flora
 //#define MMA8451_INTR 9 // The MMA8451 interrupt line will go to pin 9 on the Flora
@@ -42,7 +42,7 @@
 #define ABN_HR_UPPER     90 // just for testing, actual value will be like 145 or something
 #define ABN_HR_LOWER     70 // just for testing, actual value will be like 40 or something
 #define ABN_SPO2_LOWER   95 // below this value spo2 is considered abnormal
-#define ABN_LOOPS_THRESH 5  // Number of loops a value can be abnormal before it triggers a transmission
+#define ABN_LOOPS_THRESH 9  // Number of loops a value can be abnormal before it triggers a transmission
 
 #define PACKET_SIZE 60 // Size of char array (string of data) to send over Bluetooth
 
@@ -51,6 +51,7 @@
 // MMA8451 variables
 Adafruit_MMA8451 mma = Adafruit_MMA8451();
 uint16_t xyz_buffer[3];
+char POS_STAT[2] = "NM"; //Position of person, will either be NM (normal), FD (Lying Facedown), FU (Lying Faceup), RS (Lying Right Side), LS (Lying Left Side)
 
 // MAX30102 DATA COLLECTION
 uint32_t red_buffer[BUFFER_SIZE]; // red LED sensor data
@@ -87,13 +88,14 @@ char update_packet[PACKET_SIZE + 1];
   
   Wire.begin(); // Join the bus
 
+
   // SERIAL COMMUNICATION USED FOR DEBUGGING
-  Serial.begin(115200);
-  while(!Serial);
+//  Serial.begin(115200);
+//  while(!Serial);
 
   // SETUP THE BLE BOARD
-  if(!ble.begin(VERBOSE_MODE)) {
-    Serial.println("Couldn't find Bluefruit. Reset WAFR...");
+  if(!ble.begin()) {
+    //Serial.println("Couldn't find Bluefruit. Reset WAFR...");
     while(1);
   }
   ble.factoryReset();
@@ -115,7 +117,8 @@ char update_packet[PACKET_SIZE + 1];
   // Setup all max30102 registers
   max30102_init();
 
-Serial.println("LOADING");
+// Serial.println("LOADING"); // DEBUG
+
 //--------------------- MAX30102 FIRST BUFFER LOAD ------------------------
   // Put 5 num_peak samples in num_peaks_arr
   for(uint32_t r = 0; r < INITIAL_SAMPLE_SIZE; r++) { // Collect 15s worth of peaks (heartbeats)
@@ -128,7 +131,7 @@ Serial.println("LOADING");
     }
     num_peaks_arr[r] = get_num_peaks(ir_buffer);
     spo2_ratio_arr[r] = get_spo2_ratio(red_buffer, ir_buffer);
-    Serial.println("...");
+    // Serial.println("..."); // DEBUG
   }
 //-------------------------------------------------------------------------
 
@@ -179,7 +182,7 @@ Serial.println("LOADING");
 
   mma.read();
   
-  Serial.println("COMPLETE\n");
+  // Serial.println("COMPLETE\n"); // DEBUG
  }
 
  void loop() {
@@ -201,11 +204,13 @@ Serial.println("LOADING");
   else {spo2_abnormal = 0; }
 
   // Check if horizontal
-  if(abs(mma.z) > 3200 || abs(mma.y) > 3200) {horizontal++;}
-  else {horizontal = 0;}
   
-  // Check if sudden orientation change
-  // STILL NEED TO FIGURE THIS OUT
+  if(mma.z > 3100) {horizontal++; strcpy(POS_STAT,"FD");}
+  else if(mma.z < -3100) {horizontal++; strcpy(POS_STAT,"FU");}
+  else if(mma.y > 3100) {horizontal++; strcpy(POS_STAT,"LS");}
+  else if(mma.y < -3100) {horizontal++; strcpy(POS_STAT,"RS");}
+  else {horizontal = 0; strcpy(POS_STAT,"NM");}
+  
 
 //------------------------------------------------------------------------
 
@@ -223,7 +228,7 @@ Serial.println("LOADING");
 //  Serial.print(" -- HR_ABNORMAL: "); Serial.print(hr_abnormal);
 //  Serial.print(" -- SPO2_ABNORMAL: "); Serial.print(spo2_abnormal);
 //  Serial.print(" -- HZL: "); Serial.print(horizontal);
-//  Serial.print(" -- OR_CHANGE: "); Serial.print(orientation_change);
+//  Serial.print(" -- POS_STAT: "); Serial.print(POS_STAT);
 
 //------------------------------------------------------------------------
 
@@ -232,14 +237,13 @@ Serial.println("LOADING");
   if(hr_abnormal >= ABN_LOOPS_THRESH || 
      spo2_abnormal >= ABN_LOOPS_THRESH  || 
      horizontal >= ABN_LOOPS_THRESH || 
-     orientation_change || 
      timer >= 5) {
 
     // Create data packet
     sprintf(update_packet, "%" PRIu32 ",%" PRIu32 ",%" PRId16 ",%" PRId16 ",%" PRId16 ",%" PRId16 ",%" PRId16
-                          ",%" PRId16 ",%d ,%d ,%d ,%d", avg_hr, avg_spo2, 
+                          ",%" PRId16 ",%d ,%d ,%d ,%s", avg_hr, avg_spo2, 
                           xyz_buffer[0], xyz_buffer[1], xyz_buffer[2], mma.x, mma.y, mma.z, 
-                          hr_abnormal, spo2_abnormal, horizontal, orientation_change);
+                          hr_abnormal, spo2_abnormal, horizontal, POS_STAT);
     
     // Send data packet to the BLE board for transmission
     ble.print("AT+BLEUARTTX=");
@@ -286,7 +290,7 @@ Serial.println("LOADING");
       avg_hr = (avg_hr + heart_rate) / INITIAL_SAMPLE_SIZE; // Calculate average HR from heart rate array
       hr_valid = 1;
   }
-  else { hr_valid = 0; }
+  else {avg_hr = 999; hr_valid = 0; }
 
   // CALCULATE SPO2
   for(uint32_t r = 0; r < INITIAL_SAMPLE_SIZE; r++) { avg_ratio += spo2_ratio_arr[r]; }
@@ -302,8 +306,7 @@ Serial.println("LOADING");
       avg_spo2 = (avg_spo2 + spo2) / INITIAL_SAMPLE_SIZE;
       spo2_valid = 1;
   }
-  else {spo2_valid = 0;}
+  else {avg_spo2 = 999; spo2_valid = 0;}
 //---------------------------------------------------------------------
   timer++;
  }
-

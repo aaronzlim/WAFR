@@ -15,7 +15,7 @@
 #include <TinyWireM.h>
 #include <USI_TWI_Master.h>
 #include <Wire.h>
-#include <SoftwareSerial.h>
+// #include <SoftwareSerial.h>
 
 // Remember to call Wire.begin in your Arduino sketch
 // The Wire object only uses class variables, so even though

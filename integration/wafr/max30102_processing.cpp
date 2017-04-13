@@ -10,7 +10,7 @@
 
 #include <Arduino.h>
 #include "max30102_processing.h"
-#include <SoftwareSerial.h>
+// #include <SoftwareSerial.h>
 
 uint32_t get_num_peaks(uint32_t *ir_buffer) {
   /*
