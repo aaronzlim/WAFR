@@ -34,15 +34,15 @@
 #include <Adafruit_BluefruitLE_UART.h>
 #include <inttypes.h>
 
-// #include <SoftwareSerial.h>
+//#include <SoftwareSerial.h>
 
 #define MAX30102_INTR 10 // The MAX30102 interrupt line will go to pin 10 on the Flora
 //#define MMA8451_INTR 9 // The MMA8451 interrupt line will go to pin 9 on the Flora
 
-#define ABN_HR_UPPER     90 // just for testing, actual value will be like 145 or something
-#define ABN_HR_LOWER     70 // just for testing, actual value will be like 40 or something
+#define ABN_HR_UPPER     140 // just for testing, actual value will be like 145 or something
+#define ABN_HR_LOWER     40 // just for testing, actual value will be like 40 or something
 #define ABN_SPO2_LOWER   95 // below this value spo2 is considered abnormal
-#define ABN_LOOPS_THRESH 9  // Number of loops a value can be abnormal before it triggers a transmission
+#define ABN_LOOPS_THRESH 10  // Number of loops a value can be abnormal before it triggers a transmission
 
 #define PACKET_SIZE 60 // Size of char array (string of data) to send over Bluetooth
 
@@ -88,14 +88,15 @@ char update_packet[PACKET_SIZE + 1];
   
   Wire.begin(); // Join the bus
 
-
   // SERIAL COMMUNICATION USED FOR DEBUGGING
 //  Serial.begin(115200);
 //  while(!Serial);
 
-  // SETUP THE BLE BOARD
+  // SETUP THE BLE BOARD ( for debugging use ble.begin(VERBOSE_MODE) )
   if(!ble.begin()) {
-    //Serial.println("Couldn't find Bluefruit. Reset WAFR...");
+    if(Serial) { 
+      Serial.println("Couldn't find Bluefruit. Reset WAFR...");
+    }
     while(1);
   }
   ble.factoryReset();
@@ -107,7 +108,6 @@ char update_packet[PACKET_SIZE + 1];
   mma.begin();
   mma.setRange(MMA8451_RANGE_2_G);
   mma.setDataRate(MMA8451_DATARATE_1_56_HZ);
-  // pinMode(MMA8451_INTR, INPUT); // This may or may not be used...
 
   // INITIALIZE the MAX30102 PULSE OXIMETER
   max30102_reset();
@@ -220,8 +220,8 @@ char update_packet[PACKET_SIZE + 1];
 // Do not uncomment all of these Serial.print lines at once!
 // You will run out of RAM and the code will not function properly.
 
-//  Serial.print("HR: "); Serial.print(avg_hr);
-//  Serial.print(" -- SPO2: "); Serial.print(avg_spo2);
+//  Serial.println(avg_hr);
+//  Serial.println(avg_spo2);
 //  Serial.print(" -- X: "); Serial.print(mma.x);
 //  Serial.print(" -- Y: "); Serial.print(mma.y);
 //  Serial.print(" -- Z: "); Serial.println(mma.z);
