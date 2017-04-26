@@ -44,14 +44,14 @@
 #define ABN_SPO2_LOWER   95 // below this value spo2 is considered abnormal
 #define ABN_LOOPS_THRESH 10  // Number of loops a value can be abnormal before it triggers a transmission
 
-#define PACKET_SIZE 60 // Size of char array (string of data) to send over Bluetooth
+#define PACKET_SIZE 20 // Size of char array (string of data) to send over Bluetooth
 
 // ------------------------ GLOBAL VARIABLE DECLARATIONS ------------------------
 
 // MMA8451 variables
 Adafruit_MMA8451 mma = Adafruit_MMA8451();
 uint16_t xyz_buffer[3];
-char POS_STAT[2] = "NM"; //Position of person, will either be NM (normal), FD (Lying Facedown), FU (Lying Faceup), RS (Lying Right Side), LS (Lying Left Side)
+char POS_STAT = 'N'; //Position of person, will either be NM (normal), FD (Lying Facedown), FU (Lying Faceup), RS (Lying Right Side), LS (Lying Left Side)
 
 // MAX30102 DATA COLLECTION
 uint32_t red_buffer[BUFFER_SIZE]; // red LED sensor data
@@ -102,7 +102,7 @@ char update_packet[PACKET_SIZE + 1];
   ble.factoryReset();
   ble.echo(false);
   // Change the device name
-  ble.sendCommandCheckOK(F("AT+GAPDEVNAME=WAFR"));
+  ble.sendCommandCheckOK(F("AT+GAPDEVNAME=WAFR1"));
 
   // INITIALIZE THE MMA8451 ACCELEROMETER
   mma.begin();
@@ -205,12 +205,15 @@ char update_packet[PACKET_SIZE + 1];
 
   // Check if horizontal
   
-  if(mma.z > 3100) {horizontal++; strcpy(POS_STAT,"FD");}
-  else if(mma.z < -3100) {horizontal++; strcpy(POS_STAT,"FU");}
-  else if(mma.y > 3100) {horizontal++; strcpy(POS_STAT,"LS");}
-  else if(mma.y < -3100) {horizontal++; strcpy(POS_STAT,"RS");}
-  else {horizontal = 0; strcpy(POS_STAT,"NM");}
-  
+  if(mma.z > 3100) {horizontal++; POS_STAT = 'D';}
+  else if(mma.z < -3100) {horizontal++; POS_STAT = 'U';}
+  else if(mma.y > 3100) {horizontal++; POS_STAT = 'L';}
+  else if(mma.y < -3100) {horizontal++; POS_STAT = 'R';}
+  else {horizontal = 0; POS_STAT = 'N';}
+
+  if(hr_abnormal > 999) {hr_abnormal = 0;}     // When we send a data packet over BLE we are limited
+  if(spo2_abnormal > 999) {spo2_abnormal = 0;} // to 20 bytes (for simplicity), so these values cannot be more than
+  if(horizontal > 999) {horizontal = 0;}       // three (3) digits.
 
 //------------------------------------------------------------------------
 
@@ -240,10 +243,7 @@ char update_packet[PACKET_SIZE + 1];
      timer >= 5) {
 
     // Create data packet
-    sprintf(update_packet, "%" PRIu32 ",%" PRIu32 ",%" PRId16 ",%" PRId16 ",%" PRId16 ",%" PRId16 ",%" PRId16
-                          ",%" PRId16 ",%d ,%d ,%d ,%s", avg_hr, avg_spo2, 
-                          xyz_buffer[0], xyz_buffer[1], xyz_buffer[2], mma.x, mma.y, mma.z, 
-                          hr_abnormal, spo2_abnormal, horizontal, POS_STAT);
+    sprintf(update_packet, "%" PRIu32 ",%" PRIu32 ",%d,%d,%d,%c", avg_hr, avg_spo2, hr_abnormal, spo2_abnormal, horizontal, POS_STAT);
     
     // Send data packet to the BLE board for transmission
     ble.print("AT+BLEUARTTX=");
