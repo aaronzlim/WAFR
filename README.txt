@@ -26,7 +26,7 @@ Technology Used
 - Adafruit Flora (atmega32u4)
 - Maxrefdes117 optical sensor system (Maxim Integrated)
   - MAX30102
-- Adafruit Flora Bluefruit (Bluetooth Low Energy Tx/Rx)
+- Adafruit Flora Bluefruit (Bluetooth Low Energy w/ UART)
 - I2C interface (TWI)
   - Arduino Wire library
-- MOTION SENSOR TBD
+- MMA8451 Triple Axis Accelerometer

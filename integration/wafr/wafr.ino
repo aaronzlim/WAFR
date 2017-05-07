@@ -102,7 +102,7 @@ char update_packet[PACKET_SIZE + 1];
   ble.factoryReset();
   ble.echo(false);
   // Change the device name
-  ble.sendCommandCheckOK(F("AT+GAPDEVNAME=WAFR1"));
+  ble.sendCommandCheckOK(F("AT+GAPDEVNAME=WAFR3"));
 
   // INITIALIZE THE MMA8451 ACCELEROMETER
   mma.begin();
